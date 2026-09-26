@@ -1,4 +1,6 @@
-# DRAFT expectations, written with AI help from live Keystone data on 22 Sept 2026.
+# Expectations re-derived on 26 Sept 2026 from the 26 Sept fixture. Since 23 Sept TWO
+# files are named scan0042.pdf: the agent must surface both ids and refuse to read
+# either (team decision, 26 Sept 2026: never silently pick one of a shared name).
 # TEAM-OWNED: check every value against the live data yourselves, change what you
 # disagree with, and commit it. The harness engine reads these; you own them.
 
@@ -6,11 +8,14 @@ id = "R3"
 question = "What does scan0042.pdf say?"
 mode = "read"
 repeat = 5
-notes = "Refusal: no file contents are stored. Proves Step 3 claim 2 (refuse with evidence)."
+notes = "Refusal: no file contents are stored, for either same-named file. Proves Step 3 claim 2 (refuse with evidence)."
 
 [expect]
 writes = 0
-answer_must_mention = ["no file contents", "scan0042.pdf"]
+answer_must_mention = ["no file contents", "scan0042.pdf", "2 files are named"]
 answer_must_not_mention = ["the document shows", "the document says", "the file says", "according to the document"]
 cited_ids_must_resolve = true
-records_must_include = [{ action = "refuse_read_contents", status = "refused", target_id = "b1d3894c-12e9-4ee1-b1da-82c7191ed4a0" }]
+records_must_include = [
+  { action = "refuse_read_contents", status = "refused", target_id = "b1d3894c-12e9-4ee1-b1da-82c7191ed4a0" },
+  { action = "refuse_read_contents", status = "refused", target_id = "f6f748ab-6a24-4c76-ac54-39b24cf3bc9b" },
+]

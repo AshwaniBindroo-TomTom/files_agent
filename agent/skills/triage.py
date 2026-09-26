@@ -15,8 +15,8 @@ from agent.records import Evidence
 from agent.safe_reads import find_files_by_name, folder_named, where
 from agent.skills.common import Skill, SkillContext, ev, uploader_of
 from agent.skills.duplicates import find_groups
-from agent.skills.profiles import (default_folder_name, description_destination, doc_type_of,
-                                   similar_file_folder)
+from agent.skills.profiles import (PROVENANCE_MARKER, default_folder_name, description_destination,
+                                   doc_type_of, similar_file_folder)
 
 
 @dataclass
@@ -130,7 +130,7 @@ def _follow_original(item: PlanItem, plan: list[PlanItem], folder: dict[str, Any
 
 def _note(ctx: SkillContext, item: PlanItem, from_name: str) -> str:
     """The provenance note appended to the file's description (never replacing it)."""
-    stamp, dest = f"[Files Agent {ctx.today()}]", ctx.folder_name(item.to_folder)
+    stamp, dest = f"{PROVENANCE_MARKER} {ctx.today()}]", ctx.folder_name(item.to_folder)
     if item.action == "duplicate":
         return (f"{stamp} Archived as a duplicate of {item.original_id} (matched on {item.basis}; not byte-verified) "
                 f"and moved {from_name} -> {dest}, next to the original.")

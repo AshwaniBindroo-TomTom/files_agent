@@ -1,0 +1,16 @@
+{
+  "business": "keystone",
+  "captured_at": "2026-09-26T05:18:37+00:00",
+  "counts": {
+    "FileAttachment": 113,
+    "DriveFolder": 8,
+    "Item": 28,
+    "Party": 100,
+    "DriveAccessLog": 10,
+    "AgentEscalation": 0,
+    "AgentSession": 0,
+    "tools": 212
+  },
+  "tool_hash": "c10a009a80de46c6",
+  "fixture_hash": "8bf8e438f43d618a"
+}

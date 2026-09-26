@@ -587,6 +587,14 @@ This section keeps the background you need while you build and test: platform fa
 - **Dates.** Live numbers were measured on Keystone on **22 Sept 2026**, unless a row says otherwise.
 - **Offline re-checks.** Many facts can be re-checked offline. The captured fixtures `harness/fixtures/keystone/2026-09-22/` and `harness/fixtures/suryodaya/2026-09-22/` hold the same data. The tables say which facts you can re-check there.
 
+> ⚠️ **The platform data changed on 23 Sept 2026** (found live on 26 Sept; fresh fixture: `harness/fixtures/keystone/2026-09-26/`). What changed:
+> - **Every one of the 9 Incoming files was duplicated**: same filename, new id, no tags, no party, `updated_at` 23 Sept. Incoming now holds **18** files.
+> - **All four PO_4471 files share one recorded hash** (`e11d7a4c8b350962`) across **two different sizes** (880 B vs 218 KB) — the Suryodaya "untrustworthy shared hash" trap, now planted on Keystone. `find_duplicates`/`triage_folder` correctly reject the hash and escalate instead of archiving; nothing is archived as a duplicate any more.
+> - **6 new files elsewhere**, including second copies of the J-BRKT-04 RevB/RevC drawings (not linked to the part, so `find_drawing` is unaffected).
+> - Tool count **208 → 212**, hash `cc08bae6517ed3cb` → `c10a009a80de46c6`; all required tools still present. Total files **98 → 113**.
+>
+> On 26 Sept the team re-derived the affected task expectations (C1, R2, R3, R4, TI1, TI2, TI3) from the new fixture and made two agent changes: agent-filed rows no longer count as `similar_file_in_folder` evidence (keeps a second tidy pass at 0 writes), and a filename matching several files is refused with every candidate id listed, never silently picked. Team decisions recorded in the task-file headers: idempotency kept strict, ambiguity flagged, and the live write allow-list stays pinned to the 9 **original** ids. Numbers elsewhere in sections 5–7 are as measured on 22 Sept unless marked otherwise.
+
 **Status key:** ✅ built · 🟡 partly built · 🛠 platform work (staff) · 🐞 platform defect (bug raised) · ⛔ not built · 👤 team's job (hand-written by you).
 
 ### 5.1 Five facts that shape Step 4
@@ -604,12 +612,14 @@ This section keeps the background you need while you build and test: platform fa
    - the OpenAPI paths went 729 → 731;
    - the UI was redeployed.
 
-   So the agent discovers its tools at start-up (`agent/catalog.py`) and fingerprints the catalogue (hash `cc08bae6517ed3cb` in both 22 Sept fixtures). The harness runs a pre-flight check before any live write (`harness/preflight.py`).
+   And on 23 Sept 2026 the scenario data itself changed: the tool count went 208 → 212 (hash `c10a009a80de46c6`), and all 9 Incoming files were duplicated with a forged shared hash on the PO pair (see the note at the top of this section). So the agent discovers its tools at start-up (`agent/catalog.py`) and fingerprints the catalogue (hash `cc08bae6517ed3cb` in both 22 Sept fixtures). The harness runs a pre-flight check before any live write (`harness/preflight.py`). This design caught the 23 Sept change on first contact: `python -m agent smoke` reported the new tool hash and file count on 26 Sept.
 5. **The brief says "a test written by Claude or Codex scores zero."** 👤 You write the tests. You also decide what counts as correct: the task expectations, the verifier checks and the scoring weights. Anything below that looks like an answer key is only notes.
 
 ### 5.2 Platform facts (Keystone, measured live 22 Sept 2026)
 
 The **Offline check** column says whether the 22 Sept 2026 fixture lets you re-check the fact. **Live only** means the repo can't re-check it: the value is the one measured live on 22 Sept 2026.
+
+> Superseded by the 23 Sept data change for the counting rows: tools **212** (hash `c10a009a80de46c6`), files **113**, in folders **30** (Incoming 18, Jig & Fixture 4, Production 4, Quality 2, Superseded 2). Re-check any row against `harness/fixtures/keystone/2026-09-26/`. The permission and behaviour rows below still hold as of 26 Sept.
 
 | Fact | Value | How to check live | Offline check |
 |---|---|---|---|
@@ -1077,13 +1087,13 @@ The same in Git Bash: `grep -rlF "PASTE_THE_SECRET_HERE" runs harness/fixtures`.
 ```bash
 # O1 Who you are -> 'id': '2b5bbcef-ce22-44dc-a49c-5e2f7a165b9f', ..., 'allowed_apps': ['agent', 'crm', 'drive']
 python -m agent --target fake whoami
-# O2 Tool count -> first line: 208 tools; hash cc08bae6517ed3cb; all required tools present
+# O2 Tool count -> first line: 212 tools; hash c10a009a80de46c6; all required tools present (26 Sept fixture; 22 Sept: 208, cc08bae6517ed3cb)
 python -m agent --target fake tools
-# O3 All files -> 98
+# O3 All files -> 113 (22 Sept: 98)
 python -c "from harness.fixtures import load; print(len(load('keystone')['tables']['FileAttachment']))"
-# O4 -> linked to a part: 6 ; not a part (safe_reads): 92 ; ne: trap: 83
+# O4 -> linked to a part: 6 ; not a part (safe_reads): 107 ; ne: trap: 98   (22 Sept: 6 / 92 / 83)
 python -c "from harness.fixtures import load; from agent.safe_reads import where, not_equal; F = load('keystone')['tables']['FileAttachment']; print('linked to a part:', len(where(F, entity_type='Item')), '; not a part (safe_reads):', len(not_equal(F, 'entity_type', 'Item')), '; ne: trap:', len([f for f in F if f['entity_type'] not in (None, 'Item')]))"
-# O5 Incoming files -> 9 lines, shown below
+# O5 Incoming files -> 18 lines since the 23 Sept data change: the 9 originals below plus an untagged 23 Sept copy of each
 python -c "from harness.fixtures import load; F = load('keystone')['tables']['FileAttachment']; [print(f['filename'], f['is_archived'], f['tags'], f['updated_at']) for f in F if f['folder_id'] == '6f8a3ed1-f2df-46a7-8dcb-275e9494c799']"
 # O6 The exact part -> [('bc49e18f-7a20-43e5-83ac-1b41dc7684ea', 'J-BRKT-04')]
 python -c "from harness.fixtures import load; print([(i['id'], i['code']) for i in load('keystone')['tables']['Item'] if i['code'] == 'J-BRKT-04'])"
@@ -1093,7 +1103,7 @@ python -c "from harness.fixtures import load; F = load('keystone')['tables']['Fi
 python -c "from harness.fixtures import load; s = load('keystone')['rest']['/api/agent/office']['seats'][0]; print([(g['key'], g['implemented']) for g in s['goals']], 'jobs', s['stats']['jobs_total'])"
 ```
 
-O5 output:
+O5 output (the 9 original rows; the 26 Sept fixture adds a same-named copy of each, tags empty, `updated_at` 23 Sept):
 ```text
 Untitled.pdf 0 untriaged 2026-09-16T16:27:27.787242
 scan0042.pdf 0 untriaged 2026-09-16T16:27:27.785815
@@ -1106,7 +1116,7 @@ PO_4471_ApexMetals_signed (1).pdf 0 untriaged 2026-09-16T16:27:27.774638
 PO_4471_ApexMetals_signed.pdf 0 untriaged 2026-09-16T16:27:27.772529
 ```
 
-**Why 92 and 83 differ (O4).** 98 files = 6 linked to a part (5 filed drawings, plus `J-KNOB-09_RevA.dxf` in Incoming) + 83 e-sign attachments + 9 files with no `entity_type` (the other 8 Incoming files and the mill cert in Quality). "Not a part" is 98 − 6 = **92**. The platform's `ne:` filter silently drops rows whose value is empty, so `entity_type=ne:Item` gives **83**. The skills never send `ne:` (`list_all` in `agent/safe_reads.py` drops it); its `not_equal` helper gives the right answer in Python (O4 uses it), though no skill needs it yet. The fake server does **not** copy the trap: there, `entity_type=ne:Item` simply matches nothing.
+**Why 92 and 83 differ (O4).** 98 files = 6 linked to a part (5 filed drawings, plus `J-KNOB-09_RevA.dxf` in Incoming) + 83 e-sign attachments + 9 files with no `entity_type` (the other 8 Incoming files and the mill cert in Quality). "Not a part" is 98 − 6 = **92**. The platform's `ne:` filter silently drops rows whose value is empty, so `entity_type=ne:Item` gives **83**. The skills never send `ne:` (`list_all` in `agent/safe_reads.py` drops it); its `not_equal` helper gives the right answer in Python (O4 uses it), though no skill needs it yet. The fake server does **not** copy the trap: there, `entity_type=ne:Item` simply matches nothing. (Same arithmetic on the 26 Sept fixture: 113 files = 6 linked to a part + 83 e-sign + 15 `entity_type = Drive` (the 23 Sept rows — these are why the Drive screen now shows 15 instead of 0) + 9 with no `entity_type`, so "not a part" is 107 and the `ne:` trap gives 98.)
 
 ---
 

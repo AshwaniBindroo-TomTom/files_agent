@@ -1,4 +1,5 @@
-# DRAFT expectations, written with AI help from live Keystone data on 22 Sept 2026.
+# Expectations re-derived on 26 Sept 2026 from the 26 Sept fixture (15 new rows since
+# the 23 Sept platform data change: 113 rows, 30 in Drive folders).
 # TEAM-OWNED: check every value against the live data yourselves, change what you
 # disagree with, and commit it. The harness engine reads these; you own them.
 
@@ -6,9 +7,9 @@ id = "C1"
 question = "How many files are in the Drive?"
 mode = "read"
 repeat = 5
-notes = "Proves Step 3 claim 1: the Drive views say 0, the record list shows 15 in folders (98 rows)."
+notes = "Proves Step 3 claim 1: the Drive views count only entity_type 'Drive' (15), the record list shows 30 in folders (113 rows)."
 
 [expect]
 writes = 0
-answer_must_mention = ["98", "15", "entity_type"]
+answer_must_mention = ["113", "30", "15", "entity_type"]
 records_must_include = [{ action = "contradiction", status = "info" }]

@@ -50,25 +50,40 @@ def explain_access(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
             "answer_text": f"This seat has the apps: {', '.join(allowed)}." + (f" {app} is one of them." if app else "")}
 
 
-def resolve_file(ctx: SkillContext, text: str) -> dict[str, Any] | None:
+def resolve_file(ctx: SkillContext, text: str) -> list[dict[str, Any]]:
+    """Every file the text could mean. More than one match is the caller's problem:
+    with duplicated filenames on the platform, silently picking one misleads."""
     files = ctx.files()
     exact = find_files_by_name(files, text.strip())
     if exact:
-        return exact[0]
+        return exact
     if "duplicate" in text.lower():
         words = [w.lower() for w in re.findall(r"[A-Za-z0-9]+", text) if w.lower() not in {"the", "duplicate", "file", "copy", "delete", "remove"}]
         copies = [c for g in find_groups(files) for c in g.copies]
-        hits = [c for c in copies if all(w in (c.get("filename") or "").lower() for w in words)]
-        return hits[0] if len(hits) == 1 else None
-    return None
+        return [c for c in copies if all(w in (c.get("filename") or "").lower() for w in words)]
+    return []
+
+
+def _ambiguous(ctx: SkillContext, skill: str, target: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    ids = [r["id"] for r in rows]
+    ctx.note_ids(*ids)
+    ctx.record(skill=skill, action="file_not_identified", status="refused", target_label=target,
+               missing=["an exact file id: the name matches more than one file"],
+               details={"candidates": ids})
+    listing = "; ".join(f"{r.get('filename')} ({r['id']})" for r in rows)
+    return {"answer_text": (f"{len(rows)} files match {target!r}: {listing}. I couldn't identify exactly one file, "
+                            "so I did nothing. Say which id you mean.")}
 
 
 def remove_file(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
     target = str(args.get("file", ""))
-    row = resolve_file(ctx, target)
-    if not row:
+    rows = resolve_file(ctx, target)
+    if not rows:
         ctx.record(skill="remove_file", action="file_not_identified", status="refused", target_label=target, missing=["an exact filename"])
         return {"answer_text": f"I couldn't identify exactly one file from {target!r}, so I did nothing."}
+    if len(rows) > 1:
+        return _ambiguous(ctx, "remove_file", target, rows)
+    row = rows[0]
     ctx.note_ids(row["id"])
     can_delete = bool((row.get("_permissions") or {}).get("delete"))
     trash_tools = sorted(n for n in ctx.catalog.names if n.endswith((".delete", ".trash")) and n.startswith("FileAttachment"))
@@ -83,19 +98,23 @@ def remove_file(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
 
 def file_contents(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
     target = str(args.get("file", ""))
-    row = resolve_file(ctx, target)
-    if not row:
+    rows = resolve_file(ctx, target)
+    if not rows:
         ctx.record(skill="file_contents", action="file_not_identified", status="refused", target_label=target)
         return {"answer_text": f"No file is named exactly {target!r}. I did not guess."}
-    ctx.note_ids(row["id"])
-    uploader = uploader_of(ctx, row["id"])
-    facts = [f"description: {row.get('description')!r}" if row.get("description") else "no description",
-             f"tags: {row.get('tags')!r}" if row.get("tags") else "no tags",
-             f"uploader per access log: {uploader}" if uploader else "no upload record"]
-    ctx.record(skill="file_contents", action="refuse_read_contents", status="refused", target_id=row["id"], target_label=row.get("filename"),
-               evidence=[ev("storage", "no file revisions / bytes are stored for this row")], missing=["file contents"])
-    return {"answer_text": (f"I can't read {row.get('filename')} ({row['id']}): the platform stores no file contents for it, "
-                            f"so there is nothing to quote. What the record itself holds: {'; '.join(facts)}.")}
+    # A shared filename refuses every match, so the reader sees all of them, not a silent pick.
+    lines = [f"{len(rows)} files are named {rows[0].get('filename')}; none can be read."] if len(rows) > 1 else []
+    for row in rows:
+        ctx.note_ids(row["id"])
+        uploader = uploader_of(ctx, row["id"])
+        facts = [f"description: {row.get('description')!r}" if row.get("description") else "no description",
+                 f"tags: {row.get('tags')!r}" if row.get("tags") else "no tags",
+                 f"uploader per access log: {uploader}" if uploader else "no upload record"]
+        ctx.record(skill="file_contents", action="refuse_read_contents", status="refused", target_id=row["id"], target_label=row.get("filename"),
+                   evidence=[ev("storage", "no file revisions / bytes are stored for this row")], missing=["file contents"])
+        lines.append(f"I can't read {row.get('filename')} ({row['id']}): the platform stores no file contents for it, "
+                     f"so there is nothing to quote. What the record itself holds: {'; '.join(facts)}.")
+    return {"answer_text": "\n".join(lines)}
 
 
 def list_files(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:

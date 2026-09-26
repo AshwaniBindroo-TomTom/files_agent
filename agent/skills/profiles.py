@@ -12,6 +12,13 @@ from agent.skills.revisions import code_prefix, part_code
 
 RULES_FILE = Path(__file__).resolve().parent.parent / "filing_rules.toml"
 
+# The prefix of every provenance note this agent appends when it files a file.
+PROVENANCE_MARKER = "[Files Agent"
+
+
+def agent_filed(row: dict[str, Any]) -> bool:
+    return PROVENANCE_MARKER in (row.get("description") or "")
+
 
 @dataclass(frozen=True)
 class DocType:
@@ -64,8 +71,13 @@ def majority_folder(rows: list[dict[str, Any]], skip_folder_ids: set[str]) -> st
 
 def similar_file_folder(row: dict[str, Any], dtype: DocType, files: list[dict[str, Any]],
                         rules: Rules, skip_folder_ids: set[str]) -> str | None:
-    """Where files of the same kind already live (drawings: same code prefix)."""
-    others = [f for f in files if f.get("id") != row.get("id")]
+    """Where files of the same kind already live (drawings: same code prefix).
+
+    Files this agent filed itself (provenance note in the description) never count:
+    otherwise a file that scored below threshold gains evidence from our own pass-1
+    moves and a second tidy pass moves what the first escalated (not idempotent).
+    """
+    others = [f for f in files if f.get("id") != row.get("id") and not agent_filed(f)]
     if dtype.name == "drawing":
         code = part_code(row.get("filename", ""))
         if not code:

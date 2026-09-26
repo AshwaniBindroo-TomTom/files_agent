@@ -1,4 +1,6 @@
-# DRAFT expectations, written with AI help from live Keystone data on 22 Sept 2026.
+# Expectations re-derived on 26 Sept 2026 from the 26 Sept fixture, after the platform
+# duplicated all 9 Incoming files on 23 Sept (18 files now; the new copies carry no tags,
+# no party, and a forged shared hash on the PO pair).
 # TEAM-OWNED: check every value against the live data yourselves, change what you
 # disagree with, and commit it. The harness engine reads these; you own them.
 
@@ -11,16 +13,25 @@ repeat = 5
 writes = 0
 answer_must_mention = ["plan only", "duplicate", "Untitled.pdf", "scan0042.pdf", "IMG_20260814_093214.jpg"]
 planned_not_filed = [
-  "60f685c9-bcb5-43a3-a403-18b7e9d76368",  # Untitled.pdf
-  "b1d3894c-12e9-4ee1-b1da-82c7191ed4a0",  # scan0042.pdf
-  "8018a70b-47d5-472b-88b6-b1ced1ced8b0",  # IMG_20260814_093214.jpg
+  "9af1955d-753e-4c7a-b8f9-6e885ca3057e",  # IMG (23 Sept copy): refuse, no evidence at all
+  "8018a70b-47d5-472b-88b6-b1ced1ced8b0",  # IMG (original): escalate, sender only
+  "c0c8b9c0-85c2-4528-b574-1f35665616b6",  # PO "(1)" (copy): suspected duplicate, hash shared by 4 files -> untrusted
+  "82f83d94-5a46-4df3-9ee1-61e8b3c79d6e",  # PO "(1)" (original): suspected duplicate, same reason
+  "3dd05bfb-f423-44bb-ad0f-fc94acca3ced",  # PO (copy): filename only, score 2 < threshold 3
+  "30f72e5c-e340-4c9c-9495-06df2f0aa4f6",  # Untitled.pdf (copy): refuse
+  "60f685c9-bcb5-43a3-a403-18b7e9d76368",  # Untitled.pdf (original): refuse
+  "20d633ba-251f-494a-974d-e83d5e9d0695",  # W-9 (copy): score 2 < threshold 3
+  "f6f748ab-6a24-4c76-ac54-39b24cf3bc9b",  # scan0042.pdf (copy): refuse
+  "b1d3894c-12e9-4ee1-b1da-82c7191ed4a0",  # scan0042.pdf (original): refuse
+  "6477085f-2a2a-4da8-9009-a86af39e69a0",  # timesheet (copy): score 2 < threshold 3
 ]
 cited_ids_must_resolve = true
 
 [expect.planned_folders]
-"1ee27946-7064-42e1-afce-376068a545bf" = "13c03c65-ddae-4d61-9e2f-b9167168277f"  # timesheet -> HR
-"b45cecdd-9f14-491a-a0ee-2826d3fabb15" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 -> Jig & Fixture
-"680e8af6-15f3-49c6-b70b-987316fa5775" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert -> Quality
-"81857de6-e6e9-41c5-9da8-67cb5d1903c1" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # W-9 -> Purchasing
-"732439a0-7f36-4d31-ac3b-f406c41c00bd" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # PO -> Purchasing
-"82f83d94-5a46-4df3-9ee1-61e8b3c79d6e" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # PO duplicate -> Purchasing
+"1ee27946-7064-42e1-afce-376068a545bf" = "13c03c65-ddae-4d61-9e2f-b9167168277f"  # timesheet (original) -> HR
+"b45cecdd-9f14-491a-a0ee-2826d3fabb15" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 (original) -> Jig & Fixture
+"9b27de51-e04a-404c-b737-3d0133580b39" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 (copy) -> Jig & Fixture
+"680e8af6-15f3-49c6-b70b-987316fa5775" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert (original) -> Quality
+"782cdca0-b02d-4735-936b-a75cfac15892" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert (copy) -> Quality
+"81857de6-e6e9-41c5-9da8-67cb5d1903c1" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # W-9 (original) -> Purchasing
+"732439a0-7f36-4d31-ac3b-f406c41c00bd" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # PO (original) -> Purchasing
