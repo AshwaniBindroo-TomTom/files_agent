@@ -1,8 +1,15 @@
-# Expectations re-derived on 26 Sept 2026 from the 26 Sept fixture, after the platform
-# duplicated all 9 Incoming files on 23 Sept (18 files now; the new copies carry no tags,
-# no party, and a forged shared hash on the PO pair).
+# DRAFT expectations, re-derived with AI help on 26 Sept 2026 from the 26 Sept fixture, after the platform
+# added a bare 880-byte copy of each of the 15 foldered scenario files on 23 Sept, 9 of them in
+# Incoming (18 files now; the copies carry no tags, party or link, and each keeps its original's
+# recorded hash, so no scenario-file hash is trusted any more).
 # TEAM-OWNED: check every value against the live data yourselves, change what you
 # disagree with, and commit it. The harness engine reads these; you own them.
+
+# Same-name rule (decision B, proposed on 27 Sept 2026; the team still has to confirm it): a file is never
+# filed into a folder that already holds, or is also getting, a file with the same name. Only a single
+# highest scorer is filed (none on a tie, or when the folder already holds that name); the others are
+# escalated as possible copies naming the other ids and sizes. So the two 880-byte 23 Sept copies that score 3 (J-KNOB-09, mill
+# cert) are escalated, not filed next to their originals.
 
 id = "TI1"
 question = "Tidy the incoming folder."
@@ -24,14 +31,14 @@ planned_not_filed = [
   "f6f748ab-6a24-4c76-ac54-39b24cf3bc9b",  # scan0042.pdf (copy): refuse
   "b1d3894c-12e9-4ee1-b1da-82c7191ed4a0",  # scan0042.pdf (original): refuse
   "6477085f-2a2a-4da8-9009-a86af39e69a0",  # timesheet (copy): score 2 < threshold 3
+  "9b27de51-e04a-404c-b737-3d0133580b39",  # J-KNOB-09 (copy, 880 bytes): same name as b45cecdd, also going to Jig & Fixture -> possible copy, escalate
+  "782cdca0-b02d-4735-936b-a75cfac15892",  # mill cert (copy, 880 bytes): same name as 680e8af6, also going to Quality -> possible copy, escalate
 ]
 cited_ids_must_resolve = true
 
 [expect.planned_folders]
 "1ee27946-7064-42e1-afce-376068a545bf" = "13c03c65-ddae-4d61-9e2f-b9167168277f"  # timesheet (original) -> HR
 "b45cecdd-9f14-491a-a0ee-2826d3fabb15" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 (original) -> Jig & Fixture
-"9b27de51-e04a-404c-b737-3d0133580b39" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 (copy) -> Jig & Fixture
 "680e8af6-15f3-49c6-b70b-987316fa5775" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert (original) -> Quality
-"782cdca0-b02d-4735-936b-a75cfac15892" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert (copy) -> Quality
 "81857de6-e6e9-41c5-9da8-67cb5d1903c1" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # W-9 (original) -> Purchasing
 "732439a0-7f36-4d31-ac3b-f406c41c00bd" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # PO (original) -> Purchasing

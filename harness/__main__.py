@@ -151,8 +151,10 @@ def cmd_routes(args: argparse.Namespace) -> int:
 
 def cmd_preflight(args: argparse.Namespace) -> int:
     rt = build(args.business, "live", "plan", None)
-    problems = preflight.check(rt, fixtures.load(args.business))
+    problems, warnings = preflight.assess(rt, fixtures.load(args.business))
     print("pre-flight OK" if not problems else "pre-flight FAILED:\n  - " + "\n  - ".join(problems))
+    if warnings:
+        print("warnings (not blocking):\n  - " + "\n  - ".join(warnings))
     return 0 if not problems else 1
 
 

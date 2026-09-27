@@ -6,6 +6,7 @@ folder; if it points somewhere else the file is flagged as a conflict, never mov
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -34,6 +35,8 @@ class PlanItem:
 
 
 TRUSTED_DUPLICATE_BASIS = "recorded hash"
+SAME_NAME_BASIS = "same filename in the destination"
+OUT_OF_SCOPE = "not in the write allow-list"
 
 
 def _signals(ctx: SkillContext, row: dict[str, Any], files: list[dict[str, Any]], skip: set[str]) -> list[Evidence]:
@@ -91,9 +94,11 @@ def build_plan(ctx: SkillContext, folder: dict[str, Any], only_file: str | None)
     groups = {c["id"]: g for g in find_groups(files) for c in g.copies}
     plan = [_plan_item(ctx, row, files, skip, groups.get(row["id"]))
             for row in sorted(in_folder, key=lambda r: r.get("filename", ""))]
-    for item in plan:
+    _hold_name_collisions(ctx, plan, files)
+    for item in plan:  # after the same-name rule, so a duplicate never follows an original that is held back
         if item.action == "duplicate":
-            _follow_original(item, plan, folder)
+            _follow_original(ctx, item, plan, folder)
+    for item in plan:
         if item.action in ("escalate", "refuse", "conflict"):
             row = item.row
             item.person = (row.get("_party_id_display") or row.get("from_name") or row.get("from_email")) or uploader_of(ctx, row["id"])
@@ -118,14 +123,60 @@ def _plan_item(ctx: SkillContext, row: dict[str, Any], files: list[dict[str, Any
                              f"only {group.basis} match"])
 
 
-def _follow_original(item: PlanItem, plan: list[PlanItem], folder: dict[str, Any]) -> None:
-    """A duplicate goes where its original goes; if the original isn't filed, the duplicate waits for a person."""
+def _follow_original(ctx: SkillContext, item: PlanItem, plan: list[PlanItem], folder: dict[str, Any]) -> None:
+    """A duplicate goes where its original goes; if the original isn't filed in this run, the duplicate waits for a person."""
     twin = next((p for p in plan if p.row["id"] == item.original_id), None)
     if twin is not None:
-        item.to_folder = twin.to_folder if twin.action == "move" else None
+        filed = twin.action == "move" and twin.row["id"] in ctx.allowlist
+        item.to_folder = twin.to_folder if filed else None
     if item.to_folder in (None, folder["id"]):
         item.action, item.to_folder = "escalate", None
         item.missing = [f"a filed original: {item.original_id} is not filed yet, so the duplicate was not archived"]
+
+
+def _name_key(row: dict[str, Any]) -> str:
+    return (row.get("filename") or "").strip().casefold()
+
+
+def _hold_name_collisions(ctx: SkillContext, plan: list[PlanItem], files: list[dict[str, Any]]) -> None:
+    """Never put two files with the same name into one folder without a person deciding.
+
+    A planned move is held back when its destination already holds a file of that name, or when
+    another file of that name is planned into the same destination. Of the planned ones, only a
+    single highest scorer is filed; the others (and a tie) are escalated as possible copies.
+    """
+    groups: dict[tuple[str, str], list[PlanItem]] = defaultdict(list)
+    for item in plan:  # only files this run may write compete: an out-of-scope file stays where it is
+        if item.action == "move" and item.to_folder and item.row["id"] in ctx.allowlist:
+            groups[(item.to_folder, _name_key(item.row))].append(item)
+    for (dest, name), items in groups.items():
+        ids = {i.row["id"] for i in items}
+        present = [f for f in files if f.get("folder_id") == dest and _name_key(f) == name
+                   and f["id"] not in ids and not f.get("is_trashed")]
+        ranked = sorted(items, key=lambda i: i.score, reverse=True)
+        tie = len(ranked) > 1 and ranked[0].score == ranked[1].score
+        keep = None if present or tie else ranked[0]
+        for item in ranked:
+            if item is not keep:
+                others = present or ([keep.row] if keep else [i.row for i in ranked if i is not item])
+                _hold_as_copy(ctx, item, others, dest)
+
+
+def _size(row: dict[str, Any]) -> str:
+    size = row.get("size_bytes")
+    return f"{int(size):,} bytes" if isinstance(size, (int, float)) else "size unknown"
+
+
+def _hold_as_copy(ctx: SkillContext, item: PlanItem, others: list[dict[str, Any]], dest: str) -> None:
+    """Escalate instead of filing, naming every same-name file (largest first) so a person can compare them."""
+    row, where_to = item.row, ctx.folder_name(dest)
+    others = sorted(others, key=lambda f: f.get("size_bytes") or 0, reverse=True)
+    named = ", ".join(f"{o['id']} ({_size(o)})" for o in others)
+    item.evidence = [*item.evidence, *(ev("possible_copy", f"{where_to} already has, or is also getting, a file named "
+                                          f"{o.get('filename')} ({o['id']})", None, o["id"]) for o in others)]
+    item.action, item.original_id, item.basis = "escalate", others[0]["id"], SAME_NAME_BASIS
+    item.missing = [f"a person to say whether {row['id']} ({_size(row)}, score {item.score}) is a copy of {named}; "
+                    f"all are named {row.get('filename')} and would sit in {where_to}"]
 
 
 def _note(ctx: SkillContext, item: PlanItem, from_name: str) -> str:
@@ -186,6 +237,11 @@ def run(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
     for item in plan:
         if item.action == "leave":
             continue
+        if item.row["id"] not in ctx.allowlist:  # outside this run's scope: no write AND no (permanent) escalation
+            ctx.record(skill="triage_folder", action="out_of_scope", status="skipped", target_id=item.row["id"],
+                       target_label=item.row.get("filename"),
+                       details={"reason": OUT_OF_SCOPE, "planned": item.action, "to_folder_id": item.to_folder})
+            continue
         if ctx.guard.can_write and item.action in ("move", "duplicate") and item.to_folder:
             _apply_move(ctx, item, folder)
         elif item.action not in ("move", "duplicate"):
@@ -194,6 +250,8 @@ def run(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _why(item: PlanItem) -> str:
+    if item.basis == SAME_NAME_BASIS:
+        return f"Possible copy of {item.original_id}: filing it would put two files with the same name in one folder."
     if item.action == "escalate" and item.original_id:
         return "Possible duplicate that I could not confirm or file safely."
     return {"refuse": "Cannot identify this file: no linked record, no sender, no readable contents.",
@@ -214,12 +272,15 @@ def _summary(ctx: SkillContext, plan: list[PlanItem], folder: dict[str, Any]) ->
     applied = ctx.guard.can_write
     mode = "applied" if applied else "plan only - nothing was changed"
     outcome = {r.target_id: r for r in ctx.records.all()
-               if r.skill == "triage_folder" and r.status in ("applied", "skipped", "failed")}
+               if r.skill == "triage_folder" and r.status in ("applied", "skipped", "failed") and not r.action.startswith("plan_")}
     lines = [f"Triage of '{folder['name']}' ({mode}):"]
     for item in plan:
         name, fid = item.row.get("filename"), item.row["id"]
         done = outcome.get(fid)
-        if done and done.status == "skipped":
+        if done and done.action == "out_of_scope":
+            lines.append(f"- {name} ({fid}) left for a person: not in this run's scope ({OUT_OF_SCOPE}); "
+                         "nothing was written or escalated for it.")
+        elif done and done.status == "skipped":
             lines.append(f"- SKIPPED {name} ({fid}): it changed since the plan (now in {done.details.get('now_in')}); not overwritten.")
         elif done and done.status == "failed":
             lines.append(f"- FAILED {name} ({fid}): {done.details.get('error')}")

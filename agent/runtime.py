@@ -66,7 +66,8 @@ def check_write_permission(target: str, mode: str, settings: Settings) -> None:
 
 
 def build(business: str, target: str, mode: str, trace_path: Path | None, *, transport: Any = None,
-          settings: Settings | None = None, trace: Trace | None = None) -> Runtime:
+          settings: Settings | None = None, trace: Trace | None = None, live_allowlist: bool = False) -> Runtime:
+    """`live_allowlist` (offline only matters): cap the write allow-list exactly as the live target does."""
     settings = settings or get_settings(business)
     check_write_permission(target, mode, settings)
     trace = trace or Trace(trace_path, Redactor(settings.secrets()))
@@ -81,7 +82,7 @@ def build(business: str, target: str, mode: str, trace_path: Path | None, *, tra
     catalog = Catalog.from_tools(admin.list_tools())
     trace.write("catalog", report=catalog.report(), hash=catalog.hash(), problems=catalog.check_required())
     admin.sanitise = lambda payload: sanitise_payload(payload, catalog.can_list)
-    allowlist = _allowlist(admin, target, settings)
+    allowlist = _allowlist(admin, target, settings, live_allowlist)
     mcp = McpClient(session, trace, budget)
     mcp._tools = admin.list_tools()
     mcp.sanitise = admin.sanitise
@@ -92,13 +93,14 @@ def build(business: str, target: str, mode: str, trace_path: Path | None, *, tra
     return Runtime(settings, target, trace, transport, session, mcp, admin, catalog, budget, guard, ctx)
 
 
-def _allowlist(mcp: McpClient, target: str, settings: Settings) -> frozenset[str]:
-    """Writable file ids = what is in Incoming right now; on the live platform also capped to the verified 9."""
+def _allowlist(mcp: McpClient, target: str, settings: Settings, live_cap: bool = False) -> frozenset[str]:
+    """Writable file ids = what is in Incoming right now; on the live platform (or with live_cap,
+    to rehearse it offline) also capped to the verified 9."""
     incoming = folder_named(folders_by_id(mcp), "Incoming")
     if not incoming:
         return frozenset()
     page = mcp.call("FileAttachment.list", {"folder_id": incoming["id"], "limit": 500})
     ids = frozenset(r["id"] for r in where((page or {}).get("data", []), folder_id=incoming["id"]))
-    if target == "live":
+    if target == "live" or live_cap:
         return ids & KEYSTONE_INCOMING_ALLOWLIST if settings.business == WRITE_BUSINESS else frozenset()
     return ids

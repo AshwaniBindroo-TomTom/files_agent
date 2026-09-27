@@ -1,9 +1,15 @@
-# Expectations re-derived on 26 Sept 2026 from the 26 Sept fixture (18 Incoming files).
+# DRAFT expectations, re-derived with AI help on 26 Sept 2026 from the 26 Sept fixture (18 Incoming files).
 # The second pass must make no writes: evidence created by our own pass-1 moves does not
 # count (agent-filed files are excluded from similar_file_in_folder), so a file that
 # scored below threshold in pass 1 stays escalated in pass 2.
 # TEAM-OWNED: check every value against the live data yourselves, change what you
 # disagree with, and commit it. The harness engine reads these; you own them.
+
+# Same-name rule (decision B, proposed on 27 Sept 2026; the team still has to confirm it): a file is never
+# filed into a folder that already holds, or is also getting, a file with the same name. Only a single
+# highest scorer is filed (none on a tie, or when the folder already holds that name); the others are
+# escalated as possible copies naming the other ids and sizes. So the two 880-byte 23 Sept copies that score 3 (J-KNOB-09, mill
+# cert) are escalated, not filed next to their originals.
 
 id = "TI3"
 question = "Tidy the incoming folder."
@@ -15,13 +21,13 @@ notes = "Idempotency. writes and last_pass_escalations apply to the LAST pass."
 [expect]
 writes = 0
 last_pass_escalations = 0
-escalations_new = 11   # all from pass 1; pass 2 adds none (de-duplicated by subject)
+escalations_new = 13   # all from pass 1; pass 2 adds none (de-duplicated by subject)
 
 [expect.final_folders]
 "1ee27946-7064-42e1-afce-376068a545bf" = "13c03c65-ddae-4d61-9e2f-b9167168277f"  # timesheet (original) -> HR
 "b45cecdd-9f14-491a-a0ee-2826d3fabb15" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 (original) -> Jig & Fixture
-"9b27de51-e04a-404c-b737-3d0133580b39" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 (copy) -> Jig & Fixture
+"9b27de51-e04a-404c-b737-3d0133580b39" = "6f8a3ed1-f2df-46a7-8dcb-275e9494c799"  # J-KNOB-09 (copy) stays in Incoming: pass 2 sees the original already in Jig & Fixture
 "680e8af6-15f3-49c6-b70b-987316fa5775" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert (original) -> Quality
-"782cdca0-b02d-4735-936b-a75cfac15892" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert (copy) -> Quality
+"782cdca0-b02d-4735-936b-a75cfac15892" = "6f8a3ed1-f2df-46a7-8dcb-275e9494c799"  # mill cert (copy) stays in Incoming: pass 2 sees the original already in Quality
 "81857de6-e6e9-41c5-9da8-67cb5d1903c1" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # W-9 (original) -> Purchasing
 "732439a0-7f36-4d31-ac3b-f406c41c00bd" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # PO (original) -> Purchasing

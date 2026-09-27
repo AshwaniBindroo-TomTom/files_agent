@@ -1,4 +1,4 @@
-# Expectations re-derived on 26 Sept 2026 from the 26 Sept fixture (15 new rows since
+# DRAFT expectations, re-derived with AI help on 26 Sept 2026 from the 26 Sept fixture (15 new rows since
 # the 23 Sept platform data change: 113 rows, 30 in Drive folders).
 # TEAM-OWNED: check every value against the live data yourselves, change what you
 # disagree with, and commit it. The harness engine reads these; you own them.

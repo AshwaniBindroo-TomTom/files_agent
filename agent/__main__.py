@@ -7,7 +7,7 @@
 
 --target and --business may go before or after the command.
 Plan-only is the default. --apply writes only on the fake server: live writes go
-through the harness (`python -m harness run TI2 --target live --live-apply`), which
+through the harness (`python -m harness run TI2L --target live --live-apply`), which
 adds pre-flight, snapshot, write journal and restore.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ def _trace_path(name: str):
 def cmd_ask(args: argparse.Namespace) -> int:
     if args.apply and args.target == "live":
         print("refused: `ask --apply` writes only on the fake server. Live writes go through "
-              "`python -m harness run TI2 --target live --live-apply` (pre-flight, snapshot and restore).", file=sys.stderr)
+              "`python -m harness run TI2L --target live --live-apply` (pre-flight, snapshot and restore).", file=sys.stderr)
         return 3
     settings = get_settings(args.business)
     model_kind = args.model or ("anthropic" if settings.anthropic_api_key else "scripted")

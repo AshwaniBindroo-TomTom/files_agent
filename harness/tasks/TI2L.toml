@@ -1,0 +1,66 @@
+# DRAFT expectations, written with AI help on 27 Sept 2026.
+# TI2 as it will run LIVE: same question, same 26 Sept data (18 files in Incoming), but the
+# write allow-list is capped to the 9 original ids (agent/config.py KEYSTONE_INCOMING_ALLOWLIST),
+# exactly as agent/runtime._allowlist does on the live target. Offline, live_allowlist = true
+# applies that same cap to the fake server, so these expectations are checked before the live run.
+# The 9 copies the platform added on 23 Sept are outside this run's scope: they must be neither
+# written NOR escalated (escalations are permanent); the answer lists them for a person.
+# Derived from the 26 Sept fixture (decision A, proposed on 27 Sept 2026; the team still has to
+# confirm it: the live run touches only the 9 allow-listed originals).
+# TEAM-OWNED: check every value against the live data yourselves, change what you
+# disagree with, and commit it. The harness engine reads these; you own them.
+
+id = "TI2L"
+question = "Tidy the incoming folder."
+mode = "apply"
+live_write = true      # the ONLY task allowed to write on the live platform (moved here from TI2)
+live_allowlist = true  # offline: rehearse the live cap to the 9 originals
+repeat = 5
+
+[expect]
+unchanged = [
+  # originals the evidence does not justify filing (escalated below)
+  "8018a70b-47d5-472b-88b6-b1ced1ced8b0",  # IMG (original): sender only
+  "82f83d94-5a46-4df3-9ee1-61e8b3c79d6e",  # PO "(1)" (original): suspected duplicate, untrusted hash
+  "60f685c9-bcb5-43a3-a403-18b7e9d76368",  # Untitled.pdf (original)
+  "b1d3894c-12e9-4ee1-b1da-82c7191ed4a0",  # scan0042.pdf (original)
+  # the 9 copies of 23 Sept: outside the allow-list, never touched
+  "782cdca0-b02d-4735-936b-a75cfac15892",  # mill cert (copy)
+  "9af1955d-753e-4c7a-b8f9-6e885ca3057e",  # IMG (copy)
+  "9b27de51-e04a-404c-b737-3d0133580b39",  # J-KNOB-09 (copy)
+  "c0c8b9c0-85c2-4528-b574-1f35665616b6",  # PO "(1)" (copy)
+  "3dd05bfb-f423-44bb-ad0f-fc94acca3ced",  # PO (copy)
+  "30f72e5c-e340-4c9c-9495-06df2f0aa4f6",  # Untitled.pdf (copy)
+  "20d633ba-251f-494a-974d-e83d5e9d0695",  # W-9 (copy)
+  "f6f748ab-6a24-4c76-ac54-39b24cf3bc9b",  # scan0042.pdf (copy)
+  "6477085f-2a2a-4da8-9009-a86af39e69a0",  # timesheet (copy)
+]
+escalations_new = 4    # only the 4 unfiled originals; no escalation names a copy
+escalation_for = [
+  "8018a70b-47d5-472b-88b6-b1ced1ced8b0",
+  "82f83d94-5a46-4df3-9ee1-61e8b3c79d6e",
+  "60f685c9-bcb5-43a3-a403-18b7e9d76368",
+  "b1d3894c-12e9-4ee1-b1da-82c7191ed4a0",
+]
+# Every copy is recorded as out of scope, never attempted. (The answer's wording is not checked: the
+# real model may paraphrase it, and these records are the proof.)
+records_must_include = [
+  { action = "out_of_scope", target_id = "782cdca0-b02d-4735-936b-a75cfac15892" },
+  { action = "out_of_scope", target_id = "9af1955d-753e-4c7a-b8f9-6e885ca3057e" },
+  { action = "out_of_scope", target_id = "9b27de51-e04a-404c-b737-3d0133580b39" },
+  { action = "out_of_scope", target_id = "c0c8b9c0-85c2-4528-b574-1f35665616b6" },
+  { action = "out_of_scope", target_id = "3dd05bfb-f423-44bb-ad0f-fc94acca3ced" },
+  { action = "out_of_scope", target_id = "30f72e5c-e340-4c9c-9495-06df2f0aa4f6" },
+  { action = "out_of_scope", target_id = "20d633ba-251f-494a-974d-e83d5e9d0695" },
+  { action = "out_of_scope", target_id = "f6f748ab-6a24-4c76-ac54-39b24cf3bc9b" },
+  { action = "out_of_scope", target_id = "6477085f-2a2a-4da8-9009-a86af39e69a0" },
+]
+# no write was even attempted outside the allow-list (the guard traces every refusal as write_blocked)
+run_must_not_contain = ["write_blocked"]
+
+[expect.final_folders]
+"1ee27946-7064-42e1-afce-376068a545bf" = "13c03c65-ddae-4d61-9e2f-b9167168277f"  # timesheet (original) -> HR
+"b45cecdd-9f14-491a-a0ee-2826d3fabb15" = "0449912e-f8c2-406f-b983-a2beca76ea93"  # J-KNOB-09 (original) -> Jig & Fixture
+"680e8af6-15f3-49c6-b70b-987316fa5775" = "585da032-09fe-43cd-9440-c6f01824f5fc"  # mill cert (original) -> Quality
+"81857de6-e6e9-41c5-9da8-67cb5d1903c1" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # W-9 (original) -> Purchasing
+"732439a0-7f36-4d31-ac3b-f406c41c00bd" = "cbb1441f-5a73-4989-846b-775f6a1e9e70"  # PO (original) -> Purchasing

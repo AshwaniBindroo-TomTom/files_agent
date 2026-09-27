@@ -44,6 +44,8 @@ class Escalator:
         subject = subject_for(file_row)
         base = dict(skill="escalate", target_id=file_row["id"], target_label=file_row.get("filename"),
                     missing=missing, details={"subject": subject, "person": person, "reason": why})
+        if file_row["id"] not in self.ctx.allowlist:  # escalations are permanent: same scope as file writes
+            return self.ctx.record(action="out_of_scope", status="skipped", **base)
         if subject in self._existing_subjects():
             return self.ctx.record(action="already_escalated", status="skipped", **base)
         reason = why + (f" Missing: {', '.join(missing)}." if missing else "") + (f" Person to ask: {person}." if person else "")

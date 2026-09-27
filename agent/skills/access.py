@@ -11,6 +11,7 @@ import re
 from collections import Counter
 from typing import Any
 
+from agent.answer import UUID_RE
 from agent.privacy import is_withheld
 from agent.safe_reads import find_files_by_name
 from agent.skills.common import Skill, SkillContext, ev, uploader_of
@@ -27,6 +28,9 @@ APP_KEYWORDS = {
     "email": r"mailbox|inbox|email campaign",
     "support": r"helpdesk|support tickets?",
 }
+
+
+RELATIVE_TO_ID = re.compile(r"\b(duplicates?|cop(y|ies)|versions?)\s+of\b", re.IGNORECASE)
 
 
 def detect_app(text: str) -> str | None:
@@ -52,8 +56,16 @@ def explain_access(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
 
 def resolve_file(ctx: SkillContext, text: str) -> list[dict[str, Any]]:
     """Every file the text could mean. More than one match is the caller's problem:
-    with duplicated filenames on the platform, silently picking one misleads."""
+    with duplicated filenames on the platform, silently picking one misleads.
+
+    A record id in the text wins over everything else, so the answer to "several files
+    match, say which id you mean" can actually be followed. "The copy of <id>" names a
+    different file than <id>, so that wording never resolves by id."""
     files = ctx.files()
+    ids = {m.lower() for m in UUID_RE.findall(text or "")}
+    by_id = [f for f in files if str(f.get("id", "")).lower() in ids]
+    if by_id and not RELATIVE_TO_ID.search(text):
+        return by_id
     exact = find_files_by_name(files, text.strip())
     if exact:
         return exact
@@ -68,7 +80,7 @@ def _ambiguous(ctx: SkillContext, skill: str, target: str, rows: list[dict[str, 
     ids = [r["id"] for r in rows]
     ctx.note_ids(*ids)
     ctx.record(skill=skill, action="file_not_identified", status="refused", target_label=target,
-               missing=["an exact file id: the name matches more than one file"],
+               missing=["an exact file id: the request matches more than one file"],
                details={"candidates": ids})
     listing = "; ".join(f"{r.get('filename')} ({r['id']})" for r in rows)
     return {"answer_text": (f"{len(rows)} files match {target!r}: {listing}. I couldn't identify exactly one file, "
@@ -103,7 +115,9 @@ def file_contents(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
         ctx.record(skill="file_contents", action="file_not_identified", status="refused", target_label=target)
         return {"answer_text": f"No file is named exactly {target!r}. I did not guess."}
     # A shared filename refuses every match, so the reader sees all of them, not a silent pick.
-    lines = [f"{len(rows)} files are named {rows[0].get('filename')}; none can be read."] if len(rows) > 1 else []
+    names = sorted({str(r.get("filename")) for r in rows})
+    header = f"{len(rows)} files are named {names[0]}" if len(names) == 1 else f"{len(rows)} files match ({', '.join(names)})"
+    lines = [f"{header}; none can be read."] if len(rows) > 1 else []
     for row in rows:
         ctx.note_ids(row["id"])
         uploader = uploader_of(ctx, row["id"])

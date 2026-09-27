@@ -94,7 +94,7 @@ def planned_runs(task: Task, *, target: str, repeat: int | None = None, live_app
     live_write = target == "live" and task.mode == "apply"
     if live_write and not task.live_write:
         raise RunRefused(f"{task.id} is not marked live_write = true, so it never writes on the live platform "
-                         "(only TI2 is: its escalations are permanent, and one live write run is planned)")
+                         "(only TI2L is: its escalations are permanent, and one live write run is planned)")
     if live_write and not live_apply:
         raise RunRefused(f"{task.id} writes; on the live platform it needs --live-apply and AS_ALLOW_WRITES=1")
     check_write_permission(target, "apply" if task.mode == "apply" else "plan", get_settings(task.business))
@@ -123,7 +123,8 @@ def run_once(task: Task, n: int, *, target: str, model_kind: str, set_dir: Path,
         fixture = fixtures.load(task.business, fixture_dir) if target == "fake" or mode == "apply" else None
         transport = make_transport(target, settings, fixture_dir, task.faults, list(task.extra_files))
         _arm(transport, False)
-        rt = build(task.business, target, mode, None, transport=transport, settings=settings, trace=trace)
+        rt = build(task.business, target, mode, None, transport=transport, settings=settings, trace=trace,
+                   live_allowlist=task.live_allowlist)
         manifest = build_manifest(task, n, target, model_kind, rt, fixture)
     except WritesNotAllowed:
         raise
@@ -151,7 +152,7 @@ def _run_passes(task: Task, n: int, rt: Any, transport: Any, fixture: Any, path:
         for p in range(task.passes):
             if p:
                 rt = build(task.business, rt.target, "apply" if rt.guard.can_write else "plan", None,
-                           transport=transport, settings=settings, trace=rt.trace)
+                           transport=transport, settings=settings, trace=rt.trace, live_allowlist=task.live_allowlist)
             rt.guard.journal = journal.add
             rt.trace.write("pass_start", index=p)
             _arm(transport, True)

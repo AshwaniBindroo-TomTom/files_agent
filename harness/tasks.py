@@ -27,7 +27,8 @@ class Task:
     passes: int = 1               # ask the same question N times in the same environment (idempotency)
     faults: tuple[str, ...] = ()
     extra_files: tuple[dict[str, Any], ...] = ()
-    live_write: bool = False      # may this apply task write on the LIVE platform? (only TI2)
+    live_write: bool = False      # may this apply task write on the LIVE platform? (only one task)
+    live_allowlist: bool = False  # offline: cap the write allow-list to the live 9 (live always does), to rehearse the live run
     expect: dict[str, Any] = field(default_factory=dict)
     notes: str = ""
 
@@ -51,4 +52,10 @@ def load_task(path: Path) -> Task:
 
 def load_all(folder: Path = TASK_DIR) -> dict[str, Task]:
     tasks = [load_task(p) for p in sorted(folder.glob("*.toml")) if p.stem != "routes"]
+    live = [t.id for t in tasks if t.live_write]
+    if len(live) > 1:
+        raise ValueError(f"only one task may set live_write = true (one live write run is planned), found {live}")
+    uncapped = [t.id for t in tasks if t.live_write and not t.live_allowlist]
+    if uncapped:
+        raise ValueError(f"{uncapped} set live_write without live_allowlist, so their offline rehearsal would not match live")
     return {t.id: t for t in tasks}
