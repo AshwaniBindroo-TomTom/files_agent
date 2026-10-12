@@ -37,7 +37,22 @@ stay out **by design**: their faults need the fake server. They are graded by th
 ## Rehearse before submitting (the run quota is 1 per 3 days)
 
 - Offline, no keys, no network: `python -m harness official --dry-run`
-  (fake server + scripted model; 12 of 12 tasks passed on 9 Oct 2026, `results.json` valid).
+  (fake server + scripted model). Since 12 Oct it caps the write allow-list to the 9 originals,
+  as the server's live target does. With the cap it gives 11 of 12: TI1 fails exactly as it did
+  on the server, because its expectations assume the uncapped 18-file allow-list. The uncapped
+  dry-run had given 12 of 12 on 9 Oct.
+- The scripted model repeats each skill's answer word for word, so the dry-run cannot test the
+  answer-wording checks (`answer_must_mention` and similar). Only a real model run does.
+
+## Results so far
+
+| Run | Date | Commit | Result | Cause |
+|---|---|---|---|---|
+| `39458e84` | 9 Oct | `8a8fb4e` | 0 / 12 | the runner's `http://sandbox-keystone:8000` was refused by the https-only check (fixed in PR #11) |
+| `3f13e97c` | 12 Oct | `e3491e1` | 7 / 12 | C1, C2, R3, R5: the platform model reworded the skill answers, so wording checks failed. TI1: expectations assume the uncapped allow-list. Database-state checks and TI2L passed. |
+
+The run files stay on the server. Each task's answer excerpt is printed to the log, and a failed
+task's evidence shows the answer next to the failure reason.
 - Against the real platform with your own token: export `AGENTSWITCH_BASE_URL`,
   `AGENTSWITCH_TOKEN` (from a normal login) and any OpenAI-compatible model endpoint,
   then run `python -m harness official`.

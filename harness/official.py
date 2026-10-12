@@ -11,12 +11,16 @@ What this command does:
 2. Runs every live-safe task once with the platform model: the read-mode tasks without
    fake-server faults, plus TI2L (the one `live_write = true` task). The write guard,
    allow-list, pre-flight, snapshot and restore all stay on, exactly as in a live run.
-3. Maps the score to the runner's schema and writes `results.json`.
+3. Maps the score to the runner's schema and writes `results.json`. The run files stay on the
+   server, so each task's answer excerpt goes to stdout (the log excerpt) and, for a failed
+   task, into its evidence next to the failure reason.
 
 Rehearse locally, offline and without any key: `python -m harness official --dry-run`.
+The dry-run caps the write allow-list to the 9 originals, as the server's live target does.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 from datetime import datetime
@@ -26,6 +30,7 @@ from typing import Any
 from agent.config import REPO_ROOT, RUNS_DIR
 from agent.runtime import WritesNotAllowed
 from agent.textsafe import one_line, printable
+from agent.trace import read_trace
 from harness import fixtures
 from harness.runner import RunRefused, run_task
 from harness.score import score_set, write_score
@@ -33,6 +38,20 @@ from harness.tasks import Task, load_all
 
 RESULTS_PATH = REPO_ROOT / "results.json"
 MAX_EVIDENCE = 450
+MAX_ANSWER = 240  # the run files stay on the server; this excerpt is all the panel can show of an answer
+
+
+def answer_excerpt(set_dir: Path, task_id: str) -> str:
+    """The model's own words from the task's last pass (not the record trail the code adds), on one line."""
+    try:
+        events = read_trace(set_dir / task_id / "1.jsonl")
+    except (OSError, ValueError):
+        return ""
+    result = next((e for e in reversed(events) if e.get("kind") == "result"), None)
+    passes = (result or {}).get("passes") or []
+    if not passes:
+        return ""
+    return one_line(passes[-1].get("model_text") or passes[-1].get("answer") or "", MAX_ANSWER)
 
 
 def pick_tasks(tasks: dict[str, Task]) -> list[Task]:
@@ -43,21 +62,27 @@ def pick_tasks(tasks: dict[str, Task]) -> list[Task]:
 
 
 def to_results(score: dict[str, Any], tasks: dict[str, Task], instance: str, model: str,
-               skipped: dict[str, str]) -> dict[str, Any]:
+               skipped: dict[str, str], answers: dict[str, str] | None = None) -> dict[str, Any]:
     rows = []
+    answers = answers or {}
     for tid, entry in score["tasks"].items():
         failures = "; ".join(f"{run}: {why}" for run, why in entry["failures"].items())
         passed = bool(entry["pass_all"])
         task = tasks.get(tid)
+        if failures:
+            said = answers.get(tid)
+            # The reason comes first and keeps most of the room; the answer shows what the check saw.
+            evidence = (one_line(failures, MAX_EVIDENCE - MAX_ANSWER - 12) + f" | answer: {said}") if said else \
+                one_line(failures, MAX_EVIDENCE)
+        else:
+            evidence = f"verified from database state after the run ({entry['runs']} run(s), {entry['passed']} passed)"
         rows.append({
             "id": f"{instance}:{tid}",
             "title": one_line(f"{task.question} — {task.notes}" if task and task.notes else
                               (task.question if task else tid), 120),
             "passed": passed,
             "score": round(entry["passed"] / entry["runs"], 3) if entry["runs"] else 0.0,
-            "evidence": one_line(failures, MAX_EVIDENCE) if failures else
-                        f"verified from database state after the run ({entry['runs']} run(s), "
-                        f"{entry['passed']} passed)",
+            "evidence": one_line(evidence, MAX_EVIDENCE),
         })
     for tid, why in skipped.items():
         rows.append({"id": f"{instance}:{tid}", "title": tasks[tid].question, "passed": False,
@@ -120,10 +145,16 @@ def run_official(dry_run: bool, model_kind: str | None) -> int:
                             "the write task may be blocked by pre-flight"), flush=True)
     set_dir = RUNS_DIR / f"{datetime.now():%Y%m%d-%H%M%S}-official"
     skipped: dict[str, str] = {}
+    answers: dict[str, str] = {}
     for task in pick_tasks(tasks):
+        if dry_run:
+            # Rehearse the server's allow-list: the live target caps it to the 9 originals, and an
+            # uncapped dry-run passed TI1 while the server failed it (run 3f13e97c, 12 Oct).
+            task = dataclasses.replace(task, live_allowlist=True)
         try:
             run_task(task, target=target, model_kind=model, set_dir=set_dir, repeat=1, live_apply=True)
-            print(f"{task.id}: done", flush=True)
+            answers[task.id] = answer_excerpt(set_dir, task.id)
+            print(printable(f"{task.id}: done | answer: {answers[task.id] or '(none)'}"), flush=True)
         except (RunRefused, WritesNotAllowed) as err:
             skipped[task.id] = str(err)
             print(printable(f"{task.id}: SKIPPED - {err}"), flush=True)
@@ -131,7 +162,7 @@ def run_official(dry_run: bool, model_kind: str | None) -> int:
             print(printable(f"{task.id}: ERROR - {type(err).__name__}: {err}"), flush=True)
     score = score_set(set_dir)
     write_score(set_dir, score)
-    results = to_results(score, tasks, instance, model, skipped)
+    results = to_results(score, tasks, instance, model, skipped, answers)
     problems = check_results(results)
     if problems:
         print(printable("results.json would be malformed:\n  - " + "\n  - ".join(problems)))
