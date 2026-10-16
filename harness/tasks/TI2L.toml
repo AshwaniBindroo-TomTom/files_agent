@@ -23,6 +23,9 @@ mode = "apply"
 live_write = true      # the ONLY task allowed to write on the live platform (moved here from TI2)
 live_allowlist = true  # offline: rehearse the live cap to the 9 originals
 repeat = 5
+# Its 4 escalations need this tool. Keystone dropped it on 15 Oct (run c2224f4d), so the task is skipped,
+# not failed, until it is back or the agent moves to endpoint.agent_governance.escalations.raise.
+needs_tools = ["AgentEscalation.create"]
 
 [expect]
 unchanged = [

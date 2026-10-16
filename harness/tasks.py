@@ -32,6 +32,7 @@ class Task:
     extra_files: tuple[dict[str, Any], ...] = ()
     live_write: bool = False      # may this apply task write on the LIVE platform? (only one task)
     live_allowlist: bool = False  # offline: cap the write allow-list to the live 9 (live always does), to rehearse the live run
+    needs_tools: tuple[str, ...] = ()  # skipped, not failed, when the platform lacks one: it can't pass without it
     expect: dict[str, Any] = field(default_factory=dict)
     notes: str = ""
 
@@ -40,7 +41,8 @@ class Task:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Task":
-        return cls(**{**data, "faults": tuple(data.get("faults", ())), "extra_files": tuple(data.get("extra_files", ()))})
+        return cls(**{**data, "faults": tuple(data.get("faults", ())), "extra_files": tuple(data.get("extra_files", ())),
+                      "needs_tools": tuple(data.get("needs_tools", ()))})
 
 
 TASK_FIELDS = {f.name for f in fields(Task)}
@@ -74,6 +76,9 @@ def _type_problems(data: dict[str, Any]) -> list[str]:
         problems.append("faults must be a list of strings")
     if not isinstance(extra, list) or not all(isinstance(f, dict) for f in extra):
         problems.append("extra_files must be a list of tables")
+    needs = data.get("needs_tools", [])
+    if not isinstance(needs, list) or not all(isinstance(t, str) and t for t in needs):
+        problems.append("needs_tools must be a list of tool names")
     if not isinstance(data.get("expect", {}), dict):
         problems.append("expect must be a table")
     return problems

@@ -29,6 +29,8 @@ repeat = 5             # offline: each repeat gets a fresh fake server
 # 18-file expectations cannot pass live. The live run and its expectations are TI2L.
 # These expectations describe the OFFLINE run over all 18 files.
 
+needs_tools = ["AgentEscalation.create"]  # its escalations need it; skipped, not failed, without it
+
 [expect]
 unchanged = [
   "9af1955d-753e-4c7a-b8f9-6e885ca3057e",  # IMG (copy)

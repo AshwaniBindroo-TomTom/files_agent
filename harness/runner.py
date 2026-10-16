@@ -230,8 +230,12 @@ def run_once(task: Task, n: int, *, target: str, model_kind: str, set_dir: Path,
         rt = build(task.business, target, mode, None, transport=transport, settings=settings, trace=trace,
                    live_allowlist=task.live_allowlist)
         rt.ctx.run_id = run_id(path)
+        missing = [tool for tool in task.needs_tools if tool not in rt.catalog.names]
+        if missing:  # the review of run c2224f4d (15 Oct): skip only the task that needs it, not the whole pre-flight
+            raise RunRefused(f"{task.id} needs {', '.join(missing)}, which the platform no longer offers this seat; "
+                             "nothing was sent")
         manifest = build_manifest(task, n, target, model_kind, rt, fixture)
-    except WritesNotAllowed:
+    except (WritesNotAllowed, RunRefused):
         raise
     except Exception as err:  # still leave a run file, so the failure is scored instead of vanishing
         trace.attach(path, stub_manifest(task, n, target, model_kind))

@@ -55,9 +55,13 @@ REQUIRED_TOOLS = {
     "Party.list": [],
     "DriveAccessLog.list": [],
     "AgentSession.create": [],
-    "AgentEscalation.create": ["session_id", "reason"],
     "AgentEscalation.list": [],
 }
+
+# The tool that hands a file to a person. Optional: if the platform drops it (it did on 15 Oct), the run goes on,
+# pre-flight warns, and each file that needed a person is left in place and named in the answer instead.
+ESCALATION_TOOL = "AgentEscalation.create"
+OPTIONAL_TOOLS = {ESCALATION_TOOL: ["session_id", "reason"]}
 
 # Read-only MCP tools the model may call directly (keeps the prompt small).
 EXPOSED_READ_TOOLS = (

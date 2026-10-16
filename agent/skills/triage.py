@@ -308,7 +308,10 @@ def run(ctx: SkillContext, args: dict[str, Any]) -> dict[str, Any]:
             _apply_move(ctx, item, folder)
         elif item.action != "move":
             done = _escalate(ctx, item.row, _why(item), "insufficient_evidence", item.missing, item.person, item.party_id)
-            if done.status == "failed":  # STRIDE T3: say so in the triage outcome, which the answer is built from
+            if done.action == "cannot_escalate":  # the platform has no escalation tool: the answer must say so
+                ctx.record(skill="triage_folder", action="not_escalated", status="skipped", target_id=item.row["id"],
+                           target_label=item.row.get("filename"), details={"error": done.details.get("error")})
+            elif done.status == "failed":  # STRIDE T3: say so in the triage outcome, which the answer is built from
                 ctx.record(skill="triage_folder", action="escalation_not_confirmed", status="failed", target_id=item.row["id"],
                            target_label=item.row.get("filename"),
                            details={"error": f"the escalation was not confirmed: {done.details.get('error')}",
@@ -354,6 +357,10 @@ def _summary(ctx: SkillContext, plan: list[PlanItem], folder: dict[str, Any]) ->
         if done and done.action == "out_of_scope":
             lines.append(f"- {name} ({fid}) left for a person: not in this run's scope ({OUT_OF_SCOPE}); "
                          "nothing was written or escalated for it.")
+        elif done and done.action == "not_escalated":
+            who = f" Ask: {item.person}." if item.person else ""
+            lines.append(f"- {name} ({fid}) not filed ({item.action}): missing {', '.join(item.missing)}. Left where it "
+                         f"is for a person, NOT escalated: {done.details.get('error')}.{who}")
         elif done and done.status == "skipped":
             lines.append(f"- SKIPPED {name} ({fid}): it changed since the plan (now in {done.details.get('now_in')}); not overwritten.")
         elif done and done.status == "failed":
