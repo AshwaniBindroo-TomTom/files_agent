@@ -25,7 +25,8 @@ repeat = 5
 
 [expect]
 writes = 0
-answer_must_mention = ["plan only", "duplicate", "Untitled.pdf", "scan0042.pdf", "IMG_20260814_093214.jpg"]
+# Run c2224f4d said "plan-only mode — nothing was changed": the same fact. A list means any one wording passes.
+answer_must_mention = [["plan only", "plan-only"], "duplicate", "Untitled.pdf", "scan0042.pdf", "IMG_20260814_093214.jpg"]
 planned_not_filed = [
   "9af1955d-753e-4c7a-b8f9-6e885ca3057e",  # IMG (23 Sept copy): refuse, no evidence at all
   "8018a70b-47d5-472b-88b6-b1ced1ced8b0",  # IMG (original): escalate, sender only

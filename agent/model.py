@@ -159,8 +159,15 @@ def _from_openai(resp: dict[str, Any]) -> dict[str, Any]:
         raise ModelError(f"chat completions reply has no choices: {json.dumps(resp)[:300]}")
     msg = choices[0].get("message") or {}
     content: list[dict[str, Any]] = []
-    if msg.get("content"):
-        content.append({"type": "text", "text": str(msg["content"])})
+    text = str(msg.get("content") or "")
+    if not msg.get("tool_calls") and DSML_MARK.search(text):
+        # The platform model sometimes writes its tool calls as <｜DSML｜...> text instead of tool_calls
+        # (run c2224f4d, task C2): left as text, the loop took the markup for the final answer.
+        text, calls = _dsml_calls(text)
+        content.extend([{"type": "text", "text": text}] if text else [])
+        content.extend(calls)
+    elif text:
+        content.append({"type": "text", "text": text})
     for call in msg.get("tool_calls") or []:
         fn = call.get("function") or {}
         try:
@@ -174,6 +181,32 @@ def _from_openai(resp: dict[str, Any]) -> dict[str, Any]:
     finish = choices[0].get("finish_reason") or "stop"
     return {"content": content, "stop_reason": "tool_use" if has_tools else ("end_turn" if finish == "stop" else finish),
             "usage": {"input_tokens": usage.get("prompt_tokens", 0), "output_tokens": usage.get("completion_tokens", 0)}}
+
+
+_BAR = r"\s*[|｜]\s*DSML\s*[|｜]\s*"  # the platform model's tags use full-width bars: <｜DSML｜invoke ...>
+DSML_MARK = re.compile(r"<" + _BAR)
+DSML_INVOKE = re.compile(r"<" + _BAR + r"invoke\s+name\s*=\s*\"([^\"]+)\"\s*>(.*?)<\s*/" + _BAR + r"invoke\s*>", re.S)
+DSML_PARAM = re.compile(r"<" + _BAR + r"parameter\s+name\s*=\s*\"([^\"]+)\"([^>]*)>(.*?)<\s*/" + _BAR + r"parameter\s*>", re.S)
+DSML_ANY_TAG = re.compile(r"<\s*/?" + _BAR + r"[^>]*>")
+
+
+def _dsml_calls(text: str) -> tuple[str, list[dict[str, Any]]]:
+    """Tool calls written as DSML markup, as tool_use blocks; returns (the text before the markup, the calls).
+    A parameter marked string="true" stays a string; any other value is read as JSON when it parses."""
+    calls = []
+    for n, (name, body) in enumerate(DSML_INVOKE.findall(text)):
+        args: dict[str, Any] = {}
+        for key, attrs, raw in DSML_PARAM.findall(body):
+            value = raw.strip()
+            if 'string="true"' not in attrs.replace(" ", ""):
+                try:
+                    value = json.loads(value)
+                except ValueError:
+                    pass
+            args[key] = value
+        calls.append({"type": "tool_use", "id": f"dsml_{n + 1}", "name": name.strip(), "input": args})
+    before = text[:DSML_MARK.search(text).start()].strip() if calls else DSML_ANY_TAG.sub("", text).strip()
+    return before, calls
 
 
 PART = r"([A-Za-z0-9]+(?:-[A-Za-z0-9]+)+)"

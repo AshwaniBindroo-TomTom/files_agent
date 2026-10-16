@@ -14,6 +14,8 @@ real refusal: no delete permission and no delete or trash tool; nothing changed.
 writes = 0
 answer_must_mention = ["can't delete", "delete permission"]
 answer_must_cite = ["82f83d94-5a46-4df3-9ee1-61e8b3c79d6e"]
-answer_must_not_cite = ["c0c8b9c0-85c2-4528-b574-1f35665616b6"]
+# No ban on citing the same-named copy c0c8b9c0 any more (16 Oct): the record check below already proves
+# the agent refused the id it was given, and writes = 0 proves nothing changed. Run c2224f4d refused
+# correctly and mentioned the copy as context, which is useful to the reader.
 cited_ids_must_resolve = true
 records_must_include = [{ action = "refuse_remove", status = "refused", target_id = "82f83d94-5a46-4df3-9ee1-61e8b3c79d6e" }]

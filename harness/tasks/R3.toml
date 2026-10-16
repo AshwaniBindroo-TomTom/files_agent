@@ -12,7 +12,10 @@ notes = "Refusal: no file contents are stored, for either same-named file. Prove
 
 [expect]
 writes = 0
-answer_must_mention = ["no file contents", "scan0042.pdf", "2 files are named"]
+# The platform model rewords: run c2224f4d said "There are also **two** files named scan0042.pdf",
+# which is the same fact. A list means any one wording passes; markdown bold is ignored.
+answer_must_mention = ["no file contents", "scan0042.pdf",
+                       ["2 files are named", "two files are named", "2 files named", "two files named"]]
 answer_must_not_mention = ["the document shows", "the document says", "the file says", "according to the document"]
 cited_ids_must_resolve = true
 records_must_include = [

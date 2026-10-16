@@ -19,7 +19,7 @@ import uuid
 from typing import Any, Callable
 
 from harness.score import run_files
-from harness.verifiers import Run, RunFileError, load_run, verify
+from harness.verifiers import Run, RunFileError, load_run, plain_answer, variants, verify
 
 Mutant = Callable[[Run], "Run | None"]
 
@@ -261,7 +261,10 @@ def dropped_fact(run: Run) -> Run | None:
     if not must:
         return None
     m = _clone(run)
-    return _set_text(m, m_text(m).lower().replace(must[0].lower(), ""))
+    text = plain_answer(m_text(m))
+    for word in variants(must[0]):  # every accepted wording goes, or the check would still find one
+        text = text.replace(word.lower(), "")
+    return _set_text(m, text)
 
 
 def banned_phrase(run: Run) -> Run | None:

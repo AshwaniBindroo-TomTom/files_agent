@@ -173,12 +173,28 @@ def _state_checks(run: Run, exp: dict[str, Any]) -> list[Check]:
     return out
 
 
+MARKDOWN_EMPHASIS = re.compile(r"\*\*|__|`")
+
+
+def variants(entry: str | list[str]) -> list[str]:
+    """An answer_must_mention entry: one phrase, or a list of accepted wordings (any one is enough)."""
+    return [entry] if isinstance(entry, str) else list(entry)
+
+
+def plain_answer(text: str) -> str:
+    """The answer as matched by the mention checks: lower case, without markdown bold or code marks,
+    so a real model's '**two** files named `x`' matches 'two files named x'."""
+    return MARKDOWN_EMPHASIS.sub("", text).lower()
+
+
 def _answer_checks(run: Run, exp: dict[str, Any]) -> list[Check]:
     out: list[Check] = []
     text = run.model_text
-    lowered = text.lower()
-    for phrase in exp.get("answer_must_mention", []):
-        out.append(Check(f"mentions:{phrase[:24]}", phrase.lower() in lowered, "missing from the model's answer"))
+    lowered = plain_answer(text)
+    for entry in exp.get("answer_must_mention", []):
+        words = variants(entry)
+        out.append(Check(f"mentions:{words[0][:24]}", any(w.lower() in lowered for w in words),
+                         "missing from the model's answer" + (f" (accepted: {words})" if len(words) > 1 else "")))
     for phrase in exp.get("answer_must_not_mention", []):
         out.append(Check(f"not_mentions:{phrase[:24]}", phrase.lower() not in lowered, "present in the model's answer"))
     cited = set(cited_ids(text))
