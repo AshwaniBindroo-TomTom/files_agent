@@ -11,5 +11,7 @@ notes = "Proves Step 3 claim 1: the Drive views count only entity_type 'Drive' (
 
 [expect]
 writes = 0
-answer_must_mention = ["113", "30", "15", "entity_type"]
+# 113 rows in the 26 Sept fixture; live Keystone has 114 since about 15 Oct (official run c2224f4d,
+# where the model answered "114 files", which was right). A list means any one wording passes.
+answer_must_mention = [["113", "114"], "30", "15", "entity_type"]
 records_must_include = [{ action = "contradiction", status = "info" }]
