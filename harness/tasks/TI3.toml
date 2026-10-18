@@ -25,6 +25,8 @@ repeat = 5
 passes = 2             # ask twice in the same environment: the second pass must do nothing new
 notes = "Idempotency. writes and last_pass_escalations apply to the LAST pass."
 
+needs_tools = ["AgentEscalation.create"]  # its escalations need it; skipped, not failed, without it
+
 [expect]
 writes = 0
 last_pass_escalations = 0

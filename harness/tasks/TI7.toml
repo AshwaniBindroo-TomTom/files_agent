@@ -81,6 +81,8 @@ from_email = "sheila.rourke@keystoneprecision.com"
 content_hash = "ti7-week42"
 size_bytes = 26000
 
+needs_tools = ["AgentEscalation.create"]  # its escalations need it; skipped, not failed, without it
+
 [expect]
 writes = 0                 # last pass
 last_pass_escalations = 0  # last pass

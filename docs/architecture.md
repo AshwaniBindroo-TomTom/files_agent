@@ -422,12 +422,16 @@ NOTE: The block shows the repo before the split. Now `docs/` also holds the guid
 
 ## Appendix B. MCP tools the agent uses
 
-The agent finds the tool list at start-up. The list had 208 tools on 22 Sept 2026. It had 212 tools in the 26 Sept fixture and live on 27 Sept, and every tool below was still in it. `agent/config.py` names the 11 tools that the agent depends on, in 3 lists:
+The agent finds the tool list at start-up. The list had 208 tools on 22 Sept 2026. It had 212 tools in the 26 Sept fixture and live on 27 Sept, and every tool below was still in it. `agent/config.py` names the 11 tools that the agent depends on, in 4 lists:
 
-- **`REQUIRED_TOOLS` (10): `agent/catalog.py` checks them at start-up.**
+- **`REQUIRED_TOOLS` (9): `agent/catalog.py` checks them at start-up.**
   - If a tool is absent, or if a tool has a new required argument, the agent writes this to the trace.
   - Then `python -m agent smoke` exits 1, and `harness preflight` refuses a live write run.
   - `ask` continues.
+- **`OPTIONAL_TOOLS` (1): `AgentEscalation.create`.** Keystone dropped it on 15 Oct 2026 (official run `c2224f4d`).
+  - If it is absent, pre-flight only warns. The agent sends no session and no escalation. Each file that needed a person stays where it is, with a `cannot_escalate` record, and the answer says it was NOT escalated.
+  - A task that needs it sets `needs_tools`, and the harness skips that task instead of failing it.
+  - If it is there but has a new required argument, that is still a problem, as for a required tool.
 - **`EXPOSED_READ_TOOLS` (8): the only MCP tools that the model can call directly.** The agent offers a tool only if the live catalogue marks it `readOnlyHint` (`agent/loop.py`). The leak guard examines each result first.
 - **`WRITE_TOOLS` (3): the only writes.**
   - Only skills send them, through the write guard (`agent/guards.py`).

@@ -4,7 +4,8 @@ An escalation needs an AgentSession, so one is created per run (apply mode only)
 Escalations can't point at a file, so the subject carries the file id and is
 also the de-duplication key. Only this seat's own escalations count for it.
 Keystone has no assignable people, so escalations are unassigned; the person
-to ask is named in the reason.
+to ask is named in the reason. If the platform does not offer the escalation tool,
+nothing is sent: the file is recorded as cannot_escalate and left where it is.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from typing import Any
 
 from agent.auth import AuthError
 from agent.budget import BudgetExceeded
+from agent.config import ESCALATION_TOOL
 from agent.guards import WriteBlocked
 from agent.mcp_client import McpError
 from agent.records import DecisionRecord
@@ -97,6 +99,9 @@ class Escalator:
                     missing=missing, details={"subject": subject, "person": person, "reason": why})
         if file_row["id"] not in self.ctx.allowlist:  # escalations are permanent: same scope as file writes
             return self.ctx.record(action="out_of_scope", status="skipped", **base)
+        if ESCALATION_TOOL not in self.ctx.catalog.names:  # dropped by the platform: say so, in plan mode too
+            return self._record(base, "cannot_escalate", "skipped", write_sent=False,
+                                error=f"this seat has no {ESCALATION_TOOL} tool, so no person was asked")
         if subject in self._uncertain:  # STRIDE T3: an earlier create of it errored and may have landed
             return self._record(base, "escalate", "skipped", write_sent="uncertain",
                                 error="an earlier create of this escalation errored; not resent in this run")
@@ -130,7 +135,7 @@ class Escalator:
         if party_id:
             args["party_id"] = party_id
         try:
-            created = self.ctx.guard.create("AgentEscalation.create", args)
+            created = self.ctx.guard.create(ESCALATION_TOOL, args)
         except WriteBlocked as err:
             return self._record(base, "escalate", "failed", write_sent=False, error=str(err), **extra)
         except BudgetExceeded:  # refused before anything was sent

@@ -10,6 +10,8 @@ mode = "apply"
 repeat = 5
 notes = "Refusal with escalation: nothing identifies either file."
 
+needs_tools = ["AgentEscalation.create"]  # its escalations need it; skipped, not failed, without it
+
 [expect]
 unchanged = [
   "60f685c9-bcb5-43a3-a403-18b7e9d76368",  # Untitled.pdf (original)

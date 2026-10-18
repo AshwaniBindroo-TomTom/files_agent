@@ -90,6 +90,7 @@ PR #3 (26 Sept) and the follow-up (27 Sept) derived the rows with the mark *(26 
 - `extra_files`.
 - `live_write`: only TI2L can write on the live platform.
 - `live_allowlist`: offline, it caps the write allow-list to the 9 live ids, exactly as the live target does. This lets the offline run rehearse the live write run. Only TI2L sets it.
+- `needs_tools`: tools the task cannot pass without. If the platform does not offer one, the harness skips the task with the reason (`did not run: ...` in `results.json`) and sends nothing. The 6 tasks that escalate list `AgentEscalation.create`.
 - `[expect]`.
 
 **Expectation keys:**
