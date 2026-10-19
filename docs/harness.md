@@ -199,7 +199,7 @@ The agent part of this section is in [architecture.md](architecture.md#agent).
 
 ### Harness
 ```bash
-python -m harness list                              # the 22 tasks
+python -m harness list                              # the 24 tasks
 python -m harness run all --target fake --model scripted          # offline, 5 repeats each
 python -m harness run D1 TI1 --target fake --repeat 1 --set dev   # a quick subset
 python -m harness run TI2L --target fake --model scripted         # the live write run, rehearsed offline (9-id cap)
