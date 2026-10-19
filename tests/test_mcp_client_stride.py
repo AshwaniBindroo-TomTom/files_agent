@@ -18,7 +18,7 @@ OTHER_WRITE_TOOLS = {
     "DriveFolder.create": {"name": "E3 folder"},
     "DriveShare.share_file": {"file_id": "e3-file"},
     "AgentTask.run_now": {"id": "e3-task"},
-    "endpoint.agent_governance.escalations.raise": {"session_id": "e3-session", "assignee_party_id": "e3-party", "reason": "E3"},
+    "endpoint.agent_governance.escalations.update": {"escalation_id": "e3-escalation", "action": "withdraw"},
 }
 NOT_IN_CATALOGUE = "NotInCatalogue.create"  # made up, catalogue doesnt have it
 CATALOGUE_ONLY_READ = "AgentTask.list"  # read only per catalogue but not one of our read tools

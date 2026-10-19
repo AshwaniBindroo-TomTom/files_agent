@@ -18,13 +18,14 @@ from typing import Any
 
 from agent import snapshot
 from agent.answer import cited_ids
-from agent.config import WRITE_TOOLS
+from agent.config import ASSIGNEES_TOOL, ESCALATION_WRITE_TOOLS, WRITE_TOOLS
 from agent.guards import same_value
 from agent.trace import read_trace
 from harness.tasks import Task
 
 READ_SUFFIXES = (".list", ".get")
-READ_TOOLS = {"tools.search", "tools.describe", "endpoint.people_directory"}
+# escalations.assignees: read-only (the agent reads it before a raise), but its name has no .list/.get suffix
+READ_TOOLS = {"tools.search", "tools.describe", "endpoint.people_directory", ASSIGNEES_TOOL}
 ESCALATION_PREFIX = "[files-agent]"  # agent/skills/escalate.py subject_for: "[files-agent] <file id> <filename>"
 HTTP_5XX = re.compile(r"HTTP 5\d\d from /api/mcp")  # agent/mcp_client.py's own wording for a 5xx reply
 # STRIDE R4/T1: agent/mcp_client.py error codes after which the request may have reached the platform
@@ -128,8 +129,8 @@ def _escalations(run: Run, which: str) -> list[dict[str, Any]]:
 def _escalated_ids(run: Run) -> set[str]:
     """The file id each of this seat's escalations names: exactly the word after the prefix."""
     ids = set()
-    for e in _escalations(run, "state_after"):
-        words = str(e.get("subject") or "").split()
+    for e in _escalations(run, "state_after"):  # a raised escalation has no subject: its reason starts with it
+        words = str(e.get("subject") or e.get("reason") or "").split()
         if words[:1] == [ESCALATION_PREFIX] and len(words) > 1:
             ids.add(words[1])
     return ids
@@ -165,11 +166,19 @@ def _state_checks(run: Run, exp: dict[str, Any]) -> list[Check]:
     if "escalations_new" in exp:
         out.append(Check("escalations_new", new_esc == exp["escalations_new"], f"{new_esc} new, expected {exp['escalations_new']}"))
     if "last_pass_escalations" in exp:
-        n, esc_note = _write_count([c for c in _last_pass_calls(run, ok_only=False) if c["tool"] == "AgentEscalation.create"])
+        n, esc_note = _write_count([c for c in _last_pass_calls(run, ok_only=False) if c["tool"] in ESCALATION_WRITE_TOOLS])
         out.append(Check("last_pass_escalations", n == exp["last_pass_escalations"], f"{n} in the last pass{esc_note}"))
+    if "escalations_at_most" in exp:
+        out.append(Check("escalations_at_most", new_esc <= exp["escalations_at_most"],
+                         f"{new_esc} new, at most {exp['escalations_at_most']} expected"))
     named = _escalated_ids(run)  # STRIDE T12: an id inside another file's name no longer counts
     for fid in exp.get("escalation_for", []):
         out.append(Check(f"escalation_for:{fid[:8]}", fid in named, "no escalation names this file"))
+    # The course staff (19 Oct): with no person to assign, recording the case and stopping is correct.
+    recorded = {r.get("target_id") for r in run.last.get("records") or [] if r.get("action") == "cannot_escalate"}
+    for fid in exp.get("escalated_or_recorded", []):
+        out.append(Check(f"handed:{fid[:8]}", fid in named or fid in recorded,
+                         "neither an escalation names this file nor a cannot_escalate record"))
     return out
 
 

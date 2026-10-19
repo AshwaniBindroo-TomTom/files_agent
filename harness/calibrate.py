@@ -27,7 +27,8 @@ Mutant = Callable[[Run], "Run | None"]
 EXPECT_CHECK = {
     "writes": "writes", "final_folders": "final_folder", "archived": "archived", "unchanged": "unchanged",
     "escalations_new": "escalations_new", "last_pass_escalations": "last_pass_escalations",
-    "escalation_for": "escalation_for", "answer_must_mention": "mentions", "answer_must_not_mention": "not_mentions",
+    "escalation_for": "escalation_for", "escalations_at_most": "escalations_at_most",
+    "escalated_or_recorded": "handed", "answer_must_mention": "mentions", "answer_must_not_mention": "not_mentions",
     "answer_must_cite": "cites", "answer_must_not_cite": "not_cites", "cited_ids_must_resolve": "cited_ids_resolve",
     "planned_folders": "planned", "planned_not_filed": "not_filed", "aborted": "completed",
     "records_must_include": "records", "run_must_not_contain": "not_in_run", "no_events": "no_event",
@@ -250,9 +251,36 @@ def lost_escalation(run: Run) -> Run | None:
     ids = _exp(run, "escalation_for")
     if not ids:
         return None
+    return lost_escalation_of(run, ids[0])
+
+
+def too_many_escalations(run: Run) -> Run | None:
+    cap = _exp(run, "escalations_at_most")
+    if cap is None:
+        return None
+    m = _clone(run)
+    before = len(m.result.get("state_before", {}).get("escalations") or [])
+    after = m.result["state_after"]["escalations"]
+    after.extend({"id": str(uuid.uuid4()), "subject": "[files-agent] mutant"} for _ in range(cap + before - len(after) + 1))
+    return m
+
+
+def unhanded_case(run: Run) -> Run | None:
+    """The file was neither escalated nor recorded as a case nobody could take."""
+    ids = _exp(run, "escalated_or_recorded")
+    if not ids:
+        return None
+    m = lost_escalation_of(run, ids[0])
+    _last(m)["records"] = [r for r in _last(m).get("records") or []
+                           if not (r.get("action") == "cannot_escalate" and r.get("target_id") == ids[0])]
+    return m
+
+
+def lost_escalation_of(run: Run, file_id: str) -> Run:
     m = _clone(run)
     for e in m.result["state_after"]["escalations"]:
-        e["subject"] = (e.get("subject") or "").replace(ids[0], "")
+        for key in ("subject", "reason"):  # a raised escalation names the file in its reason
+            e[key] = (e.get(key) or "").replace(file_id, "")
     return m
 
 
@@ -381,6 +409,8 @@ MUTANTS: dict[str, tuple[Mutant, str]] = {
     "extra_escalation": (extra_escalation, "escalations_new"),
     "repeated_escalation": (repeated_escalation, "last_pass_escalations"),
     "lost_escalation": (lost_escalation, "escalation_for"),
+    "too_many_escalations": (too_many_escalations, "escalations_at_most"),
+    "unhanded_case": (unhanded_case, "handed"),
     "dropped_fact": (dropped_fact, "mentions"),
     "banned_phrase": (banned_phrase, "not_mentions"),
     "dropped_citation": (dropped_citation, "cites"),

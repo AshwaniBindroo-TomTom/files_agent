@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from typing import Any, Callable
 
-from agent.config import WRITE_TOOLS
+from agent.config import ESCALATION_WRITE_TOOLS, WRITE_TOOLS
 from agent.mcp_client import McpError, safe_error_text
 from agent.textsafe import one_line
 from agent.trace import Trace
@@ -124,23 +124,24 @@ class WriteGuard:
         return {"before": before, "after": after, "concurrent_change": drift}
 
     def create(self, tool: str, args: dict[str, Any]) -> Any:
-        """Create an AgentSession or AgentEscalation (the only other writes allowed)."""
+        """Create an AgentSession or raise/create an escalation (the only other writes allowed)."""
         self._require_apply(tool)
         if tool not in WRITE_TOOLS or tool == "FileAttachment.update":
             raise WriteBlocked(f"{tool} is not an allowed create tool")
-        if tool == "AgentEscalation.create":
+        if tool in ESCALATION_WRITE_TOOLS:
             self._check_escalation_scope(args)
         self._reserve(1)
         result = self._send(tool, args, {"tool": tool, "args": args})
         return result
 
     def _check_escalation_scope(self, args: dict[str, Any]) -> None:
-        """STRIDE E2: escalations are permanent, so the file the subject names must be allow-listed."""
-        match = ESCALATION_SUBJECT.match(str(args.get("subject") or ""))
+        """STRIDE E2: escalations are permanent, so the file the subject names must be allow-listed. raise has no
+        subject, so there the reason starts with it."""
+        match = ESCALATION_SUBJECT.match(str(args.get("subject") or args.get("reason") or ""))
         about = match.group(1) if match else None
         if about not in self.allowlist:
             raise self._block("escalation outside the allow-list", f"escalation about {about} is outside the write "
-                              "allow-list", subject=str(args.get("subject"))[:120])
+                              "allow-list", subject=str(args.get("subject") or args.get("reason"))[:120])
 
     def _send(self, tool: str, args: dict[str, Any], entry: dict[str, Any]) -> Any:
         """Send one write and log it. If the call fails in any way, the platform may still have applied it, so it

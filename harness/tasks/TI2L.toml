@@ -23,13 +23,10 @@ mode = "apply"
 live_write = true      # the ONLY task allowed to write on the live platform (moved here from TI2)
 live_allowlist = true  # offline: rehearse the live cap to the 9 originals
 repeat = 5
-# Its 4 escalations need this tool. Keystone dropped it on 15 Oct (run c2224f4d), so the task is skipped,
-# not failed, until it is back or the agent moves to endpoint.agent_governance.escalations.raise.
-needs_tools = ["AgentEscalation.create"]
 
 [expect]
 unchanged = [
-  # originals the evidence does not justify filing (escalated below)
+  # originals the evidence does not justify filing (escalated, or recorded, below)
   "8018a70b-47d5-472b-88b6-b1ced1ced8b0",  # IMG (original): sender only
   "82f83d94-5a46-4df3-9ee1-61e8b3c79d6e",  # PO "(1)" (original): suspected duplicate, untrusted hash
   "60f685c9-bcb5-43a3-a403-18b7e9d76368",  # Untitled.pdf (original)
@@ -45,8 +42,13 @@ unchanged = [
   "f6f748ab-6a24-4c76-ac54-39b24cf3bc9b",  # scan0042.pdf (copy)
   "6477085f-2a2a-4da8-9009-a86af39e69a0",  # timesheet (copy)
 ]
-escalations_new = 4    # only the 4 unfiled originals; no escalation names a copy
-escalation_for = [
+# Each of the 4 unfiled originals is handed to a person: escalated, or, where the platform lists no one to
+# assign, recorded as cannot_escalate. Keystone replaced AgentEscalation.create with escalations.raise on 15 Oct,
+# and its escalations.assignees lists no one, so live it is the record (the course staff, 19 Oct: "record the
+# case and stop; grading treats that as correct"). Offline (create in the fixture) it is 4 escalations.
+# TI8 and TI9 check each raise outcome strictly. No escalation names a copy, so there are at most 4.
+escalations_at_most = 4
+escalated_or_recorded = [
   "8018a70b-47d5-472b-88b6-b1ced1ced8b0",
   "82f83d94-5a46-4df3-9ee1-61e8b3c79d6e",
   "60f685c9-bcb5-43a3-a403-18b7e9d76368",
