@@ -72,6 +72,9 @@ class AnthropicModel:
         return attempt < self.retries and time.monotonic() + 2 ** (attempt + 1) < deadline
 
 
+BUDGET_EXHAUSTED = "budget_exhausted"  # the official runner's reply when the run's token budget is spent
+
+
 class OpenAICompatModel:
     """The platform-provided model of the official server run: OpenAI-compatible chat completions,
     tool calls included, spoken over plain HTTPS (no SDK). The loop keeps its own message format;
@@ -111,7 +114,9 @@ class OpenAICompatModel:
                     return _from_openai(json.loads(read_capped(resp, deadline, "chat completions").decode("utf-8")))
             except urllib.error.HTTPError as err:
                 detail = err.read(CHUNK_BYTES).decode("utf-8", "replace")[:300]
-                if err.code in (429, 500, 502, 503, 529) and self._may_retry(attempt, deadline):
+                # The runner's spent token budget is a 429 "budget_exhausted": waiting won't refill it, so no retry.
+                if err.code in (429, 500, 502, 503, 529) and BUDGET_EXHAUSTED not in detail \
+                        and self._may_retry(attempt, deadline):
                     time.sleep(2 ** (attempt + 1))
                     continue
                 raise ModelError(f"chat completions HTTP {err.code}: {detail}") from err

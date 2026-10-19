@@ -6,7 +6,8 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from agent.config import EXPOSED_READ_TOOLS, OPTIONAL_TOOLS, REQUIRED_TOOLS, WRITE_TOOLS
+from agent.config import (ASSIGNEES_TOOL, ESCALATION_TOOL, EXPOSED_READ_TOOLS, OPTIONAL_TOOLS, RAISE_TOOL,
+                          REQUIRED_TOOLS, WRITE_TOOLS)
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,13 @@ class Catalog:
                 problems.append(f"{name} now requires {sorted(set(self.required_args(name)) - set(args))}")
         return problems
 
+    def escalation_tool(self) -> str | None:
+        """How this seat hands a file to a person: create while the platform still offers it (both were listed until
+        15 Oct), else raise with its assignee list (create's replacement), else None."""
+        if ESCALATION_TOOL in self.tools:
+            return ESCALATION_TOOL
+        return RAISE_TOOL if RAISE_TOOL in self.tools and ASSIGNEES_TOOL in self.tools else None
+
     def missing_optional(self) -> list[str]:
         """Optional tools the platform does not offer this seat: the agent runs without what they do."""
         return sorted(name for name in OPTIONAL_TOOLS if name not in self.tools)
@@ -63,6 +71,6 @@ class Catalog:
     def report(self) -> str:
         problems = self.check_required()
         head = f"{len(self.tools)} tools; hash {self.hash()}"
-        missing = self.missing_optional()
-        tail = f"; without optional {', '.join(missing)}" if missing else ""
+        tool = self.escalation_tool()
+        tail = f"; escalates with {tool}" if tool else "; NO escalation tool (cases are recorded, not escalated)"
         return head + ("; all required tools present" if not problems else "; PROBLEMS: " + "; ".join(problems)) + tail

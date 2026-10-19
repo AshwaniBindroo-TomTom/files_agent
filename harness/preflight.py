@@ -77,9 +77,10 @@ def _drift(file_id: str, row: dict[str, Any], base: dict[str, Any] | None, need_
 def assess(rt: Any, fixture: dict[str, Any]) -> tuple[list[str], list[str]]:
     """(problems, warnings). Any problem refuses the run; warnings are reported and allowed."""
     problems = list(rt.catalog.check_required()) + _fixture_problems(rt, fixture)
-    # A missing optional tool only disables what needs it; the tasks that need it say so (needs_tools) and are skipped.
-    warnings = [f"missing tool {name}: files that need a person are left in place and named in the answer, "
-                "not escalated" for name in rt.catalog.missing_optional()]
+    # No escalation tool only disables escalating; the tasks that need one say so (needs_tools) and are skipped.
+    warnings = [] if rt.catalog.escalation_tool() else [
+        f"no escalation tool ({', '.join(rt.catalog.missing_optional())} missing): files that need a person are "
+        "left in place and named in the answer, not escalated"]
     fixture_hash = (fixture.get("_manifest") or {}).get("tool_hash")
     if not fixture_hash:
         problems.append("the fixture manifest has no tool hash: re-capture fixtures")

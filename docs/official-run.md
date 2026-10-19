@@ -50,6 +50,9 @@ stay out **by design**: their faults need the fake server. They are graded by th
 |---|---|---|---|---|
 | `39458e84` | 9 Oct | `8a8fb4e` | 0 / 12 | the runner's `http://sandbox-keystone:8000` was refused by the https-only check (fixed in PR #11) |
 | `3f13e97c` | 12 Oct | `e3491e1` | 7 / 12 | C1, C2, R3, R5: the platform model reworded the skill answers, so wording checks failed. TI1: expectations assume the uncapped allow-list. Database-state checks and TI2L passed. |
+| `c2224f4d` | 15 Oct | `9771f79` | 6 / 12 | C1: live Keystone has 114 files. C2: the model wrote its tool call as text (DSML). R3, R5, TI1: wording. TI2L: `AgentEscalation.create` was gone, so pre-flight refused it. Fixed in PR #13 and PR #14. |
+| `99f28b88` | 19 Oct | `1d2b431` | 0 / 12 | the course's model provider key had expired (HTTP 401 `upstream_error`); the staff marked it as their error, so it did not count |
+| `1bc6cc49` | 19 Oct | `1d2b431` | 10 / 12 | C1, C2, R3, R5 pass now. TI1: the 2 copies under the cap (open). TI2L: skipped (`needs_tools`), since create is gone; the raise path is in the next PR. |
 
 The run files stay on the server. Each task's answer excerpt is printed to the log, and a failed
 task's evidence shows the answer next to the failure reason.

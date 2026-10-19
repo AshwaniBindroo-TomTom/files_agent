@@ -31,6 +31,7 @@ from agent.mcp_client import McpError
 from agent.redact import Redactor
 from agent.runtime import WritesNotAllowed, build, check_write_permission, make_model, make_transport
 from agent.safe_reads import list_all
+from agent.textsafe import one_line
 from agent.trace import Trace, read_trace
 from harness import fixtures, preflight
 from harness.manifest import build_manifest, stub_manifest
@@ -73,7 +74,9 @@ def capture_state(rt: Any, ids: list[str]) -> dict[str, Any]:
                 raise
             files[file_id] = None
     me = rt.session.me().get("id")
-    escalations = [{"id": e["id"], "subject": e.get("subject"), "created_at": e.get("created_at")}
+    # A raised escalation has no subject; its reason starts with one, so the first words of it are kept too.
+    escalations = [{"id": e["id"], "subject": e.get("subject"), "created_at": e.get("created_at"),
+                    **({} if e.get("subject") else {"reason": one_line(e.get("reason"), 120)})}
                    for e in list_all(rt.admin_mcp, "AgentEscalation.list") if e.get("created_by") == me]
     return {"files": files, "escalations": escalations}
 

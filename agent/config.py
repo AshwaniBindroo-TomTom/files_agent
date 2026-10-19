@@ -42,8 +42,9 @@ KEYSTONE_INCOMING_ALLOWLIST = frozenset({
     "1ee27946-7064-42e1-afce-376068a545bf",  # timesheet_week33.xlsx
 })
 
-# The only write tools the agent may call.
-WRITE_TOOLS = frozenset({"FileAttachment.update", "AgentSession.create", "AgentEscalation.create"})
+# The only write tools the agent may call. Escalations: raise since 15 Oct 2026, create before it.
+WRITE_TOOLS = frozenset({"FileAttachment.update", "AgentSession.create", "AgentEscalation.create",
+                         "endpoint.agent_governance.escalations.raise"})
 
 # MCP tools the agent needs; checked at start-up (value = required args).
 REQUIRED_TOOLS = {
@@ -58,10 +59,18 @@ REQUIRED_TOOLS = {
     "AgentEscalation.list": [],
 }
 
-# The tool that hands a file to a person. Optional: if the platform drops it (it did on 15 Oct), the run goes on,
-# pre-flight warns, and each file that needed a person is left in place and named in the answer instead.
+# The tools that hand a file to a person. All optional: the agent uses create while the platform offers it, else
+# raise (+ assignees), which replaced create on Keystone on 15 Oct. With neither, or with no person to assign,
+# the run goes on and each file that needed a person is recorded (cannot_escalate), left in place and named in the answer.
 ESCALATION_TOOL = "AgentEscalation.create"
-OPTIONAL_TOOLS = {ESCALATION_TOOL: ["session_id", "reason"]}
+RAISE_TOOL = "endpoint.agent_governance.escalations.raise"
+ASSIGNEES_TOOL = "endpoint.agent_governance.escalations.assignees"
+OPTIONAL_TOOLS = {
+    RAISE_TOOL: ["session_id", "assignee_party_id", "reason"],
+    ASSIGNEES_TOOL: [],
+    ESCALATION_TOOL: ["session_id", "reason"],
+}
+ESCALATION_WRITE_TOOLS = frozenset({ESCALATION_TOOL, RAISE_TOOL})
 
 # Read-only MCP tools the model may call directly (keeps the prompt small).
 EXPOSED_READ_TOOLS = (

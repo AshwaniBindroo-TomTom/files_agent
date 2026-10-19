@@ -35,7 +35,7 @@ jobs:
         os: [ubuntu-24.04, windows-2025]   # the team develops on Windows
         python: ["3.11", "3.14"]           # 3.11 is the floor in pyproject.toml; 3.14 is the newest stable
     env:
-      EXPECTED_TASKS: "22"   # change this on purpose when you add or remove a task
+      EXPECTED_TASKS: "24"   # change this on purpose when you add or remove a task
     steps:
       # The default shallow clone (1 commit) is enough for the tests.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

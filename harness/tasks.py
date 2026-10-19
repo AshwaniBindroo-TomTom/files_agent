@@ -14,6 +14,7 @@ TASK_DIR = REPO_ROOT / "harness" / "tasks"
 TASK_ID_RE = re.compile(r"[A-Za-z0-9_-]+")
 KNOWN_EXPECT = {
     "writes", "final_folders", "archived", "unchanged", "escalations_new", "last_pass_escalations", "escalation_for",
+    "escalations_at_most", "escalated_or_recorded",
     "answer_must_mention", "answer_must_not_mention", "answer_must_cite", "answer_must_not_cite",
     "cited_ids_must_resolve", "planned_folders", "planned_not_filed", "aborted",
     "records_must_include", "run_must_not_contain", "no_events",

@@ -428,12 +428,15 @@ The agent finds the tool list at start-up. The list had 208 tools on 22 Sept 202
   - If a tool is absent, or if a tool has a new required argument, the agent writes this to the trace.
   - Then `python -m agent smoke` exits 1, and `harness preflight` refuses a live write run.
   - `ask` continues.
-- **`OPTIONAL_TOOLS` (1): `AgentEscalation.create`.** Keystone dropped it on 15 Oct 2026 (official run `c2224f4d`).
-  - If it is absent, pre-flight only warns. The agent sends no session and no escalation. Each file that needed a person stays where it is, with a `cannot_escalate` record, and the answer says it was NOT escalated.
-  - A task that needs it sets `needs_tools`, and the harness skips that task instead of failing it.
-  - If it is there but has a new required argument, that is still a problem, as for a required tool.
+- **`OPTIONAL_TOOLS` (3): the escalation tools.** `Catalog.escalation_tool()` picks one:
+  - `AgentEscalation.create` while the platform offers it: one session per run, unassigned.
+  - Else `endpoint.agent_governance.escalations.raise`, which replaced create on Keystone on 15 Oct 2026, with `endpoint.agent_governance.escalations.assignees`. raise hands the case to a named person and stops the agent on its session, so each case gets its own session. It has no `subject`, so `reason` starts with the subject, which keeps the de-duplication and the guard's allow-list check working.
+  - The person comes from `escalations.assignees`: the file's own party if it is listed, else the first one listed. If no one is listed (Keystone: `assignees.noLinkedSignIns`), the agent records the case as `cannot_escalate` and sends nothing. The course staff confirmed on 19 Oct that grading treats this as correct.
+  - With no escalation tool at all, pre-flight warns, and each case is recorded the same way. The answer says each such file was left in place and NOT escalated.
+  - A task that needs a specific tool sets `needs_tools`, and the harness skips that task instead of failing it.
+  - If a listed tool now requires a new argument, that is still a problem, as for a required tool.
 - **`EXPOSED_READ_TOOLS` (8): the only MCP tools that the model can call directly.** The agent offers a tool only if the live catalogue marks it `readOnlyHint` (`agent/loop.py`). The leak guard examines each result first.
-- **`WRITE_TOOLS` (3): the only writes.**
+- **`WRITE_TOOLS` (4): the only writes** (`FileAttachment.update`, `AgentSession.create`, and the 2 escalation writes).
   - Only skills send them, through the write guard (`agent/guards.py`).
   - The verifier `write_tools_allowed` fails each run that calls a different write tool.
 

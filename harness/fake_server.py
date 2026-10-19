@@ -13,6 +13,9 @@ Writes change only in-memory state. Faults (T4.5) are strings:
   missing_tool:<Tool.name>              at start, the tool is gone from tools/list
   swap_archived:<id1>:<id2>             at start, swap is_archived between two files
   planted_description:<file_id>:<text>  at start, replace a file's description
+  raise_only[:<party_id>,...]           at start, AgentEscalation.create is gone (as on Keystone since 15 Oct),
+                                        so escalations go through escalations.raise; escalations.assignees
+                                        lists these parties (none given = no one, as on Keystone)
 
 The first five are one-shot faults. They fire only while `armed` is True. The harness
 runner disarms them during its own set-up and state capture and arms them for the
@@ -32,6 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent.config import ASSIGNEES_TOOL, ESCALATION_TOOL, RAISE_TOOL
 from harness import fixtures
 
 CONTROL_ARGS = {"limit", "offset", "sort_by", "sort_order", "search"}
@@ -68,6 +72,7 @@ class FakeServer:
         self.armed = True  # one-shot faults fire only while armed (see module docstring)
         self.write_log: list[dict[str, Any]] = []
         self.calls: list[str] = []
+        self.assignees: list[str] = []  # party ids escalations.assignees lists (the raise_only fault sets them)
         for spec in extra_files or []:
             self._add_file(spec)
         self._startup_faults()
@@ -102,6 +107,9 @@ class FakeServer:
                 files[rest]["updated_at"] = _now()
             elif kind == "missing_tool":
                 self.tools = [t for t in self.tools if t["name"] != rest]
+            elif kind == "raise_only":
+                self.tools = [t for t in self.tools if t["name"] != ESCALATION_TOOL]
+                self.assignees = [p for p in rest.split(",") if p]
             elif kind == "swap_archived":
                 a, b = rest.split(":")
                 files[a]["is_archived"], files[b]["is_archived"] = files[b].get("is_archived"), files[a].get("is_archived")
@@ -169,6 +177,13 @@ class FakeServer:
         self._validate(tool, args)
         if self._once(f"error_in_200:{name}"):
             raise RpcError(-32603, "Injected failure (fake server)", "agent_error")
+        if name == ASSIGNEES_TOOL:
+            options = [{"party_id": pid, "display": (self.tables.get("Party", {}).get(pid) or {}).get("name")}
+                       for pid in self.assignees]
+            return {"status": "ok", "result": {"ok": True, "options": options,
+                                               **({} if options else {"reason_code": "assignees.noLinkedSignIns"})}}
+        if name == RAISE_TOOL:
+            return self._raise(args)
         if name == "endpoint.people_directory":
             return {"result": {"items": self.fixture.get("people_directory", [])}, "status": "ok"}
         if name == "tools.search":
@@ -240,6 +255,24 @@ class FakeServer:
                 files[file_id].update(folder_id=folder_id, updated_at=_now(), updated_by=FOREIGN_USER)
             elif kind == "foreign_change" and self._once(fault):
                 files[rest].update(tags=(files[rest].get("tags") or "") + ",touched-by-another-team", updated_at=_now(), updated_by=FOREIGN_USER)
+
+    def _raise(self, args: dict[str, Any]) -> dict[str, Any]:
+        """escalations.raise: hands the session to a listed person and stops the agent on it, so a second raise on
+        the same session is refused."""
+        sessions = self.tables.get("AgentSession", {})
+        if args["session_id"] not in sessions:
+            raise RpcError(-32602, "Record not found", "not_found")
+        if args["assignee_party_id"] not in self.assignees:
+            raise RpcError(-32602, "Invalid tool arguments.", "invalid_arguments")
+        escalations = self.tables.setdefault("AgentEscalation", {})
+        if any(e.get("session_id") == args["session_id"] for e in escalations.values()):
+            raise RpcError(-32602, "Invalid tool arguments.", "session_already_escalated")
+        row = {"id": str(uuid.uuid4()), "session_id": args["session_id"], "assignee_party_id": args["assignee_party_id"],
+               "reason": args["reason"], "reason_code": args.get("reason_code") or "unresolved_after_retries",
+               "status": "open", "created_by": self.me["id"], "created_at": _now(), "updated_at": _now()}
+        escalations[row["id"]] = row
+        self.write_log.append({"tool": RAISE_TOOL, "id": row["id"], "args": args, "by": self.me["id"]})
+        return {"status": "ok", "result": {"ok": True, "escalation": copy.deepcopy(row)}}
 
     def _create(self, entity: str, table: dict[str, dict[str, Any]], args: dict[str, Any]) -> dict[str, Any]:
         row = {"id": str(uuid.uuid4()), **args, "created_by": self.me["id"], "created_at": _now(), "updated_at": _now()}
