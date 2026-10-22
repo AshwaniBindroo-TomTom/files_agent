@@ -88,8 +88,10 @@ def to_results(score: dict[str, Any], tasks: dict[str, Task], instance: str, mod
         rows.append({"id": f"{instance}:{tid}", "title": tasks[tid].question, "passed": False,
                      "score": 0.0, "evidence": one_line(f"did not run: {why}", MAX_EVIDENCE)})
     total = score["total"]
-    summary = (f"{instance}: {total['tasks_passing_all']}/{total['tasks']} tasks pass on every run "
-               f"(model {model}; pass/fail judged from database state, not from the agent's text)")
+    # A skipped task is in results.json as passed: false, so it counts in the total too (review round 3).
+    not_run = f", {len(skipped)} did not run" if skipped else ""
+    summary = (f"{instance}: {total['tasks_passing_all']}/{total['tasks'] + len(skipped)} tasks pass on every run"
+               f"{not_run} (model {model}; pass/fail judged from database state, not from the agent's text)")
     return {"tasks": rows, "summary": summary}
 
 
