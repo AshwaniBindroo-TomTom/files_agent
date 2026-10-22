@@ -198,8 +198,11 @@ def _hold_name_collisions(ctx: SkillContext, plan: list[PlanItem], files: list[d
     single highest scorer is filed; the others (and a tie) are escalated as possible copies.
     """
     groups: dict[tuple[str, str], list[PlanItem]] = defaultdict(list)
-    for item in plan:  # only files this run may write compete: an out-of-scope file stays where it is
-        if item.action == "move" and item.to_folder and item.row["id"] in ctx.allowlist:
+    # Every planned move competes, in scope or not: the allow-list limits what is written, not what the plan
+    # says. So an out-of-scope copy is planned as a possible copy (and then skipped as out of scope, never
+    # written or escalated), not planned as a move (harness review round 3, run 1bc6cc49: TI1).
+    for item in plan:
+        if item.action == "move" and item.to_folder:
             groups[(item.to_folder, _name_key(item.row))].append(item)
     for (dest, name), items in groups.items():
         ids = {i.row["id"] for i in items}

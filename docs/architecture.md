@@ -214,7 +214,8 @@ The current drawing for part J-BRKT-04 is J-BRKT-04_RevC_JigBracket.pdf (2683b2c
    - Sometimes the plan puts more than 1 file with the same name into 1 folder. Then the agent moves only the single file with the highest score.
    - The agent escalates the other files as a *possible copy*. It escalates all of them if there is a tie, or if the folder already holds that name.
    - The escalation gives the ids and the sizes of the other files with the same name. A person can then compare them. If the folder already holds that name, these are the files that are already in the folder.
-   - This rule applies only to files that the run can write. A file outside the allow-list (step 6) stays where it is, so it never blocks an original.
+   - This rule applies to every planned move, also of a file outside the allow-list (step 6). The allow-list limits what is written, not what the plan says (harness review round 3, 22 Oct). So on the live 9-id cap, the J-KNOB-09 and mill certificate copies are planned as possible copies (TI1), and then skipped as out of scope: never written or escalated (TI2L).
+   - The cost: an out-of-scope file that scores as high as an in-scope original of the same name now holds that original back too. No file in the current data does this.
 5. Triage makes a **plan record** for each file: `plan_move`, `plan_escalate` (also for a possible copy), `plan_refuse`, `plan_conflict` or `plan_leave`. Run files from before decision C can also hold `plan_duplicate`. The verifier still reads this record, so these run files give the same score when you rescore them.
 6. **Scope rule** (decision A, confirmed). The agent never writes **and never escalates** a file outside the write allow-list of the run, because escalations are permanent. The agent makes an `out_of_scope` record for the file. The answer lists the file as `left for a person: not in this run's scope`.
 
