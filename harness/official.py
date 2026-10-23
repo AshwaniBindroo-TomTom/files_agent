@@ -38,6 +38,7 @@ from harness.tasks import Task, load_all
 
 RESULTS_PATH = REPO_ROOT / "results.json"
 MAX_EVIDENCE = 450
+OFFICIAL_MAX_USD = "1.50"  # per task, on the official run only (see run_official)
 MAX_ANSWER = 240  # the run files stay on the server; this excerpt is all the panel can show of an answer
 
 
@@ -129,6 +130,10 @@ def run_official(dry_run: bool, model_kind: str | None) -> int:
         # The official copy is disposable (writes are thrown away server-side), so the second
         # write switch is deliberately on for this one command. Every other guard stays active.
         os.environ["AS_ALLOW_WRITES"] = "1"
+        # Our $0.50 cap is priced at our own Anthropic rates. Here the course pays for the model and the runner
+        # enforces its own token budget (429 budget_exhausted), so our cap only needs to stop a runaway task:
+        # run 069d5b06 (22 Oct) lost C2 to it at $0.43. An AS_MAX_USD set by the runner still wins.
+        os.environ.setdefault("AS_MAX_USD", OFFICIAL_MAX_USD)
     tasks = load_all()
     if instance != "keystone":
         results = {"tasks": [{"id": f"{instance}:scenario", "title": "Seat 20 scenario data exists here",

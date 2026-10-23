@@ -14,6 +14,7 @@ No passwords, no `.env`, no own keys. The runner sets:
 | `AGENTSWITCH_BASE_URL` | overrides the instance URL (`get_settings` in `agent/config.py`) |
 | `AGENTSWITCH_TOKEN` | a ready bearer token: `TokenSession` in `agent/auth.py` uses it instead of a login; a 401 is fatal because the token cannot be refreshed |
 | `AGENTSWITCH_INSTANCE` | `keystone` (Seat 20's scenario data exists only there; `agentswitch-harness.toml` lists only keystone) |
+| `AS_MAX_USD` | our own per-task dollar cap. `official` sets it to $1.50 unless the runner sets it: the course pays for the model there, and the runner enforces its own token budget (429 `budget_exhausted`) |
 | `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` | the platform model. `OpenAICompatModel` in `agent/model.py` speaks the OpenAI chat-completions API over plain HTTPS — still standard library only, no SDK |
 
 ## What `python -m harness official` does
@@ -53,6 +54,7 @@ stay out **by design**: their faults need the fake server. They are graded by th
 | `c2224f4d` | 15 Oct | `9771f79` | 6 / 12 | C1: live Keystone has 114 files. C2: the model wrote its tool call as text (DSML). R3, R5, TI1: wording. TI2L: `AgentEscalation.create` was gone, so pre-flight refused it. Fixed in PR #13 and PR #14. |
 | `99f28b88` | 19 Oct | `1d2b431` | 0 / 12 | the course's model provider key had expired (HTTP 401 `upstream_error`); the staff marked it as their error, so it did not count |
 | `1bc6cc49` | 19 Oct | `1d2b431` | 10 / 12 | C1, C2, R3, R5 pass now. TI1: the 2 copies under the cap (open). TI2L: skipped (`needs_tools`), since create is gone; the raise path is in the next PR. |
+| `069d5b06` | 22 Oct | `d8b60b0` | 10 / 12 | TI1 (PR #16) and TI2L (raise path, PR #15) pass now. C2: our own $0.50 spend cap stopped it at $0.43. DU1: "can't be byte-verified" for "not byte-verified". Both passed in the run before; fixed in PR #17. |
 
 The run files stay on the server. Each task's answer excerpt is printed to the log, and a failed
 task's evidence shows the answer next to the failure reason.

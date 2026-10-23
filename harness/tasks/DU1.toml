@@ -9,7 +9,9 @@ notes = "The find_duplicates skill: the PO pair is matched on recorded hash + si
 
 [expect]
 writes = 0
-answer_must_mention = ["PO_4471_ApexMetals_signed (1).pdf", "not byte-verified"]
+# run 069d5b06 (22 Oct): the platform model wrote "can't be byte-verified", which says the same thing
+answer_must_mention = ["PO_4471_ApexMetals_signed (1).pdf", ["not byte-verified", "can't be byte-verified",
+                       "can’t be byte-verified", "cannot be byte-verified", "not be byte-verified"]]
 answer_must_cite = ["82f83d94-5a46-4df3-9ee1-61e8b3c79d6e", "732439a0-7f36-4d31-ac3b-f406c41c00bd"]
 records_must_include = [{ action = "duplicate", target_id = "82f83d94-5a46-4df3-9ee1-61e8b3c79d6e" }]
 cited_ids_must_resolve = true
